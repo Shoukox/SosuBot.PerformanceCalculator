@@ -1,12 +1,6 @@
-﻿using osu.Game.Rulesets.Mods;
-using osu.Game.Rulesets.Osu.Mods;
-using OsuApi.Core.V2.Users.Models;
-using System.Globalization;
-using System.Net;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using osu.Game.Rulesets.Osu.Mods;
 
-namespace perfomance_calc
+namespace PerfomanceCalculator
 {
     internal class Program
     {
