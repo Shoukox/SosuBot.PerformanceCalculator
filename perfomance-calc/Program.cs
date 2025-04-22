@@ -6,13 +6,12 @@ namespace PerfomanceCalculator
     {
         public static async Task Main(string[] args)
         {
-            int beatmapId = 4975644;
-            int count300 = 2436;
-            int count100 = 89;
+            int beatmapId = 970048;
+            int count300 = 1130;
+            int count100 = 19;
             int count50 = 0;
             int missCount = 0;
-            int maxCombo = 3409;
-            double accuracy = 0.9765;
+            int maxCombo = 1466;
 
             var calculator = new PPCalculator();
             double pp = await calculator.CalculatePP(
@@ -22,10 +21,9 @@ namespace PerfomanceCalculator
                 count50,
                 missCount,
                 maxCombo,
-                accuracy,
-                [new OsuModDoubleTime(), new OsuModHidden(), new OsuModClassic()]);
+                [new OsuModClassic()]);
 
-            Console.WriteLine("{0:F2}", pp);
+            Console.WriteLine("{0:0.000000}", pp);
         }
     }
 }

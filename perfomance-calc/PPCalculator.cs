@@ -33,7 +33,6 @@ namespace PerfomanceCalculator
             int count50,
             int missCount,
             int maxCombo,
-            double accuracy,
             Mod[] mods)
         {
             try
@@ -46,7 +45,7 @@ namespace PerfomanceCalculator
                 var ruleset = new OsuRuleset();
                 var scoreInfo = new ScoreInfo
                 {
-                    Accuracy = accuracy,
+                    Accuracy = CalculateAccuracy(count300, count100, count50, missCount),
                     MaxCombo = maxCombo,
                     Statistics = new Dictionary<HitResult, int>
                     {
@@ -102,7 +101,7 @@ namespace PerfomanceCalculator
 
                 var decoder = new LegacyBeatmapDecoder(version);
                 var beatmap = decoder.Decode(streamReader);
-
+                 
                 return new LoadedBeatmap(beatmap);
             }
             catch (Exception ex)
@@ -110,6 +109,17 @@ namespace PerfomanceCalculator
                 Console.WriteLine($"Error parsing beatmap: {ex.Message}");
                 throw;
             }
+        }
+
+        private double CalculateAccuracy(int count300, int count100, int count50, int missCount)
+        {
+            int totalHits = count300 + count100 + count50 + missCount;
+            if (totalHits == 0) return 1.0;
+
+            double numerator = (count300 * 300.0 + count100 * 100.0 + count50 * 50.0);
+            double denominator = totalHits * 300.0;
+
+            return numerator / denominator;
         }
     }
 
