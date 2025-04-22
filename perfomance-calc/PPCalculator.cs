@@ -12,7 +12,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using osu.Framework.Logging;
 
-namespace perfomance_calc
+namespace PerfomanceCalculator
 {
     public class PPCalculator
     {
