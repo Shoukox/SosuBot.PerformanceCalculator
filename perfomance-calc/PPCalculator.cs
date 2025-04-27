@@ -36,6 +36,7 @@ namespace PerfomanceCalculator
         /// <param name="beatmapId">Beatmap ID</param>
         /// <param name="maxCombo">Score's max combo</param>
         /// <param name="mods">enabled mods in the score</param>
+        /// <param name="accuracy">You should get this value from osu!api if working with lazer scores. Otherwise you can just calculate accuracy if working with osu!stable</param>
         /// <param name="countPerfect">Only for mania</param>
         /// <param name="count300">Equals Great</param>
         /// <param name="count100">Equals Ok, LargeTickHit</param>
@@ -56,13 +57,21 @@ namespace PerfomanceCalculator
             int beatmapId,
             int maxCombo,
             Mod[] mods,
+            double accuracy,
             int countPerfect = 0,
             int count300 = 0,
             int countGood = 0,
             int count100 = 0,
             int count50 = 0,
+            int largeTickHit = 0,
+            int smallTickHit = 0,
             int largeTickMiss = 0,
             int smallTickMiss = 0,
+            int countIgnoreHit = 0,
+            int countIgnoreMiss = 0,
+            int countSliderTailHit = 0,
+            int smallBonus = 0,
+            int largeBonus = 0,
             int missCount = 0,
             int rulesetId = 0)
         {
@@ -84,9 +93,7 @@ namespace PerfomanceCalculator
 
                 var scoreInfo = new ScoreInfo
                 {
-                    // OsuPerfomanceCalculator doesn't calculate accuracy by itself, while other PerfomanceCalculators do it.
-                    // so we need the calculation for std
-                    Accuracy = CalculateStdAccuracy(count300, count100, count50, missCount),
+                    Accuracy = accuracy,
                     MaxCombo = maxCombo,
                     Statistics = new Dictionary<HitResult, int>
                     {
@@ -96,17 +103,22 @@ namespace PerfomanceCalculator
                         { HitResult.Ok, count100 },
                         { HitResult.Meh, count50 },
                         { HitResult.Miss, missCount },
-                        { HitResult.LargeTickHit, count100},
-                        { HitResult.SmallTickHit, count50},
+                        { HitResult.LargeTickHit, largeTickHit},
+                        { HitResult.SmallTickHit, smallTickHit},
                         { HitResult.LargeTickMiss, largeTickMiss},
                         { HitResult.SmallTickMiss, smallTickMiss},
+                        { HitResult.IgnoreHit, countIgnoreHit},
+                        { HitResult.IgnoreMiss, countIgnoreMiss},
+                        { HitResult.SliderTailHit, countSliderTailHit},
+                        { HitResult.SmallBonus, smallBonus},
+                        { HitResult.LargeBonus, largeBonus},
                     },
 
                     Ruleset = ruleset.RulesetInfo,
                     BeatmapInfo = workingBeatmap.BeatmapInfo,
                     Mods = mods
                 };
-
+                Console.WriteLine(scoreInfo.Accuracy);
 
 
                 //for catch
