@@ -32,10 +32,10 @@ namespace PerfomanceCalculator
 
         public enum Playmode
         {
-            Osu,
-            Mania,
-            Taiko,
-            Catch
+            Osu = 0,
+            Taiko = 1,
+            Catch = 2,
+            Mania = 3
         }
 
         /// <summary>
