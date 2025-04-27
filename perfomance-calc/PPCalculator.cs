@@ -16,7 +16,6 @@ using osu.Game.Rulesets.Mania;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Rulesets.Catch;
 using osu.Game.Database;
-using perfomance_calc;
 
 namespace PerfomanceCalculator
 {
@@ -55,7 +54,7 @@ namespace PerfomanceCalculator
         ///         Mania = 3
         /// </param>
         /// <returns>pp and accuracy</returns>
-        public async Task<CalculationResult> CalculatePPAsync(
+        public async Task<double> CalculatePPAsync(
             int beatmapId,
             int maxCombo,
             Mod[] mods,
@@ -98,7 +97,7 @@ namespace PerfomanceCalculator
                 var ppCalculator = ruleset.CreatePerformanceCalculator()!;
                 var ppAttributes = ppCalculator.Calculate(scoreInfo, difficultyAttributes);
 
-                return new CalculationResult() { PPValue = ppAttributes.Total, Accuracy = scoreInfo.Accuracy };
+                return ppAttributes.Total;
             }
             catch (Exception ex)
             {
