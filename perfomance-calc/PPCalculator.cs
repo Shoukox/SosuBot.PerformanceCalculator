@@ -15,6 +15,7 @@ using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mania;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Rulesets.Catch;
+using osu.Game.Database;
 
 namespace PerfomanceCalculator
 {
@@ -57,22 +58,8 @@ namespace PerfomanceCalculator
             int beatmapId,
             int maxCombo,
             Mod[] mods,
-            double accuracy,
-            int countPerfect = 0,
-            int count300 = 0,
-            int countGood = 0,
-            int count100 = 0,
-            int count50 = 0,
-            int largeTickHit = 0,
-            int smallTickHit = 0,
-            int largeTickMiss = 0,
-            int smallTickMiss = 0,
-            int countIgnoreHit = 0,
-            int countIgnoreMiss = 0,
-            int countSliderTailHit = 0,
-            int smallBonus = 0,
-            int largeBonus = 0,
-            int missCount = 0,
+            Dictionary<HitResult, int> statistics,
+            Dictionary<HitResult, int> maxStatistics,
             int rulesetId = 0)
         {
             try
@@ -93,47 +80,21 @@ namespace PerfomanceCalculator
 
                 var scoreInfo = new ScoreInfo
                 {
-                    Accuracy = accuracy,
+                    Accuracy = StandardisedScoreMigrationTools.ComputeAccuracy(statistics, maxStatistics, ruleset.CreateScoreProcessor()),
                     MaxCombo = maxCombo,
-                    Statistics = new Dictionary<HitResult, int>
-                    {
-                        { HitResult.Perfect, countPerfect },
-                        { HitResult.Great, count300 },
-                        { HitResult.Good, countGood },
-                        { HitResult.Ok, count100 },
-                        { HitResult.Meh, count50 },
-                        { HitResult.Miss, missCount },
-                        { HitResult.LargeTickHit, largeTickHit},
-                        { HitResult.SmallTickHit, smallTickHit},
-                        { HitResult.LargeTickMiss, largeTickMiss},
-                        { HitResult.SmallTickMiss, smallTickMiss},
-                        { HitResult.IgnoreHit, countIgnoreHit},
-                        { HitResult.IgnoreMiss, countIgnoreMiss},
-                        { HitResult.SliderTailHit, countSliderTailHit},
-                        { HitResult.SmallBonus, smallBonus},
-                        { HitResult.LargeBonus, largeBonus},
-                    },
+                    Statistics = statistics,
 
                     Ruleset = ruleset.RulesetInfo,
                     BeatmapInfo = workingBeatmap.BeatmapInfo,
                     Mods = mods
                 };
-                Console.WriteLine(scoreInfo.Accuracy);
-
-
-                //for catch
-                //num300 = score.GetCount300() ?? 0; // HitResult.Great
-                //num100 = score.GetCount100() ?? 0; // HitResult.LargeTickHit
-                //num50 = score.GetCount50() ?? 0; // HitResult.SmallTickHit
-                //numKatu = score.GetCountKatu() ?? 0; // HitResult.SmallTickMiss
-                //numMiss = score.GetCountMiss() ?? 0; // HitResult.Miss PLUS HitResult.LargeTickMiss
 
                 // Get difficulty attributes
                 var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
                 var difficultyAttributes = difficultyCalculator.Calculate(mods);
 
                 // Calculate pp
-                var ppCalculator = ruleset.CreatePerformanceCalculator();
+                var ppCalculator = ruleset.CreatePerformanceCalculator()!;
                 var ppAttributes = ppCalculator.Calculate(scoreInfo, difficultyAttributes);
 
                 return ppAttributes.Total;
