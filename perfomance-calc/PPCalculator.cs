@@ -11,6 +11,10 @@ using osu.Game.Skinning;
 using System.Text;
 using System.Text.RegularExpressions;
 using osu.Framework.Logging;
+using osu.Game.Rulesets;
+using osu.Game.Rulesets.Mania;
+using osu.Game.Rulesets.Taiko;
+using osu.Game.Rulesets.Catch;
 
 namespace PerfomanceCalculator
 {
@@ -26,14 +30,43 @@ namespace PerfomanceCalculator
             Logger.Level = LogLevel.Error;
         }
 
-        public async Task<double> CalculatePP(
+        public enum Playmode
+        {
+            Osu,
+            Mania,
+            Taiko,
+            Catch
+        }
+
+        /// <summary>
+        /// Calculates pp for given ruleset
+        /// </summary>
+        /// <param name="beatmapId">Beatmap ID</param>
+        /// <param name="maxCombo">Score's max combo</param>
+        /// <param name="mods">enabled mods in the score</param>
+        /// <param name="countPerfect">Only for mania</param>
+        /// <param name="count300">Equals Great</param>
+        /// <param name="count100">Equals Ok, LargeTickHit</param>
+        /// <param name="countGood">Only for mania</param>
+        /// <param name="count50">Equals Meh, SmallTickHit</param>
+        /// <param name="largeTickMiss">Only for catch</param>
+        /// <param name="smallTickMiss">Only for catch</param>
+        /// <param name="missCount">Score's miss count</param>
+        /// <param name="playmode">The play mode for pp calculation</param>
+        /// <returns></returns>
+        public async Task<double> CalculatePPAsync(
             int beatmapId,
-            int count300,
-            int count100,
-            int count50,
-            int missCount,
             int maxCombo,
-            Mod[] mods)
+            Mod[] mods,
+            int countPerfect = 0,
+            int count300 = 0,
+            int count100 = 0,
+            int countGood = 0,
+            int count50 = 0,
+            int largeTickMiss = 0,
+            int smallTickMiss = 0,
+            int missCount = 0,
+            Playmode playmode = Playmode.Osu)
         {
             try
             {
@@ -42,22 +75,48 @@ namespace PerfomanceCalculator
                 if (workingBeatmap == null)
                     throw new Exception("Failed to parse beatmap");
 
-                var ruleset = new OsuRuleset();
+                Ruleset ruleset = playmode switch
+                {
+                    Playmode.Osu => new OsuRuleset(),
+                    Playmode.Mania => new ManiaRuleset(),
+                    Playmode.Taiko => new TaikoRuleset(),
+                    Playmode.Catch => new CatchRuleset(),
+                    _ => new OsuRuleset()
+                };
+
                 var scoreInfo = new ScoreInfo
                 {
-                    Accuracy = CalculateAccuracy(count300, count100, count50, missCount),
+                    // OsuPerfomanceCalculator doesn't calculate accuracy by itself, while other PerfomanceCalculators do it.
+                    // so we need the calculation for std
+                    Accuracy = CalculateStdAccuracy(count300, count100, count50, missCount),
                     MaxCombo = maxCombo,
                     Statistics = new Dictionary<HitResult, int>
                     {
+                        { HitResult.Perfect, countPerfect },
                         { HitResult.Great, count300 },
+                        { HitResult.Good, countGood },
                         { HitResult.Ok, count100 },
                         { HitResult.Meh, count50 },
                         { HitResult.Miss, missCount },
+                        { HitResult.LargeTickHit, count100},
+                        { HitResult.SmallTickHit, count50},
+                        { HitResult.LargeTickMiss, largeTickMiss},
+                        { HitResult.SmallTickMiss, smallTickMiss},
                     },
+
                     Ruleset = ruleset.RulesetInfo,
                     BeatmapInfo = workingBeatmap.BeatmapInfo,
                     Mods = mods
                 };
+
+
+
+                //for catch
+                //num300 = score.GetCount300() ?? 0; // HitResult.Great
+                //num100 = score.GetCount100() ?? 0; // HitResult.LargeTickHit
+                //num50 = score.GetCount50() ?? 0; // HitResult.SmallTickHit
+                //numKatu = score.GetCountKatu() ?? 0; // HitResult.SmallTickMiss
+                //numMiss = score.GetCountMiss() ?? 0; // HitResult.Miss PLUS HitResult.LargeTickMiss
 
                 // Get difficulty attributes
                 var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
@@ -101,7 +160,7 @@ namespace PerfomanceCalculator
 
                 var decoder = new LegacyBeatmapDecoder(version);
                 var beatmap = decoder.Decode(streamReader);
-                 
+
                 return new LoadedBeatmap(beatmap);
             }
             catch (Exception ex)
@@ -111,7 +170,15 @@ namespace PerfomanceCalculator
             }
         }
 
-        private double CalculateAccuracy(int count300, int count100, int count50, int missCount)
+        /// <summary>
+        /// Only for osu!std
+        /// </summary>
+        /// <param name="count300"></param>
+        /// <param name="count100"></param>
+        /// <param name="count50"></param>
+        /// <param name="missCount"></param>
+        /// <returns></returns>
+        private double CalculateStdAccuracy(int count300, int count100, int count50, int missCount)
         {
             int totalHits = count300 + count100 + count50 + missCount;
             if (totalHits == 0) return 1.0;
