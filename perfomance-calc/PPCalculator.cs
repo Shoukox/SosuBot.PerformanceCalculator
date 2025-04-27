@@ -80,7 +80,7 @@ namespace PerfomanceCalculator
 
                 var scoreInfo = new ScoreInfo
                 {
-                    Accuracy = StandardisedScoreMigrationTools.ComputeAccuracy(statistics, maxStatistics, ruleset.CreateScoreProcessor()),
+                    Accuracy = CalculateAccuracy(statistics, maxStatistics, ruleset.CreateScoreProcessor()),
                     MaxCombo = maxCombo,
                     Statistics = statistics,
 
@@ -141,24 +141,8 @@ namespace PerfomanceCalculator
             }
         }
 
-        /// <summary>
-        /// Only for osu!std
-        /// </summary>
-        /// <param name="count300"></param>
-        /// <param name="count100"></param>
-        /// <param name="count50"></param>
-        /// <param name="missCount"></param>
-        /// <returns></returns>
-        private double CalculateStdAccuracy(int count300, int count100, int count50, int missCount)
-        {
-            int totalHits = count300 + count100 + count50 + missCount;
-            if (totalHits == 0) return 1.0;
-
-            double numerator = (count300 * 300.0 + count100 * 100.0 + count50 * 50.0);
-            double denominator = totalHits * 300.0;
-
-            return numerator / denominator;
-        }
+        public double CalculateAccuracy(Dictionary<HitResult, int> statistics, Dictionary<HitResult, int> maxStatistics, ScoreProcessor scoreProcessor)
+            => StandardisedScoreMigrationTools.ComputeAccuracy(statistics, maxStatistics, scoreProcessor);
     }
 
     // Simple implementation of WorkingBeatmap for the calculator
