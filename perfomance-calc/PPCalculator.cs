@@ -16,6 +16,7 @@ using osu.Game.Rulesets.Mania;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Rulesets.Catch;
 using osu.Game.Database;
+using perfomance_calc;
 
 namespace PerfomanceCalculator
 {
@@ -53,8 +54,8 @@ namespace PerfomanceCalculator
         ///         Catch = 2,
         ///         Mania = 3
         /// </param>
-        /// <returns></returns>
-        public async Task<double> CalculatePPAsync(
+        /// <returns>pp and accuracy</returns>
+        public async Task<CalculationResult> CalculatePPAsync(
             int beatmapId,
             int maxCombo,
             Mod[] mods,
@@ -97,7 +98,7 @@ namespace PerfomanceCalculator
                 var ppCalculator = ruleset.CreatePerformanceCalculator()!;
                 var ppAttributes = ppCalculator.Calculate(scoreInfo, difficultyAttributes);
 
-                return ppAttributes.Total;
+                return new CalculationResult() { PPValue = ppAttributes.Total, Accuracy = scoreInfo.Accuracy };
             }
             catch (Exception ex)
             {
@@ -141,7 +142,7 @@ namespace PerfomanceCalculator
             }
         }
 
-        public double CalculateAccuracy(Dictionary<HitResult, int> statistics, Dictionary<HitResult, int> maxStatistics, ScoreProcessor scoreProcessor)
+        private double CalculateAccuracy(Dictionary<HitResult, int> statistics, Dictionary<HitResult, int> maxStatistics, ScoreProcessor scoreProcessor)
             => StandardisedScoreMigrationTools.ComputeAccuracy(statistics, maxStatistics, scoreProcessor);
     }
 
