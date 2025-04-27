@@ -30,14 +30,6 @@ namespace PerfomanceCalculator
             Logger.Level = LogLevel.Error;
         }
 
-        public enum Playmode
-        {
-            Osu = 0,
-            Taiko = 1,
-            Catch = 2,
-            Mania = 3
-        }
-
         /// <summary>
         /// Calculates pp for given ruleset
         /// </summary>
@@ -52,7 +44,13 @@ namespace PerfomanceCalculator
         /// <param name="largeTickMiss">Only for catch</param>
         /// <param name="smallTickMiss">Only for catch</param>
         /// <param name="missCount">Score's miss count</param>
-        /// <param name="playmode">The play mode for pp calculation</param>
+        /// <param name="rulesetId">
+        ///         The play mode for pp calculation.
+        ///         Std = 0,
+        ///         Taiko = 1,
+        ///         Catch = 2,
+        ///         Mania = 3
+        /// </param>
         /// <returns></returns>
         public async Task<double> CalculatePPAsync(
             int beatmapId,
@@ -60,13 +58,13 @@ namespace PerfomanceCalculator
             Mod[] mods,
             int countPerfect = 0,
             int count300 = 0,
-            int count100 = 0,
             int countGood = 0,
+            int count100 = 0,
             int count50 = 0,
             int largeTickMiss = 0,
             int smallTickMiss = 0,
             int missCount = 0,
-            Playmode playmode = Playmode.Osu)
+            int rulesetId = 0)
         {
             try
             {
@@ -75,12 +73,12 @@ namespace PerfomanceCalculator
                 if (workingBeatmap == null)
                     throw new Exception("Failed to parse beatmap");
 
-                Ruleset ruleset = playmode switch
+                Ruleset ruleset = rulesetId switch
                 {
-                    Playmode.Osu => new OsuRuleset(),
-                    Playmode.Mania => new ManiaRuleset(),
-                    Playmode.Taiko => new TaikoRuleset(),
-                    Playmode.Catch => new CatchRuleset(),
+                    0 => new OsuRuleset(),
+                    1 => new TaikoRuleset(),
+                    2 => new CatchRuleset(),
+                    3 => new ManiaRuleset(),
                     _ => new OsuRuleset()
                 };
 
