@@ -83,7 +83,6 @@ namespace PerfomanceCalculator
                     Accuracy = CalculateAccuracy(statistics, maxStatistics, ruleset.CreateScoreProcessor()),
                     MaxCombo = maxCombo,
                     Statistics = statistics,
-
                     Ruleset = ruleset.RulesetInfo,
                     BeatmapInfo = workingBeatmap.BeatmapInfo,
                     Mods = mods
