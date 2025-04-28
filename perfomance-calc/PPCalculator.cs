@@ -16,6 +16,12 @@ using osu.Game.Rulesets.Mania;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Rulesets.Catch;
 using osu.Game.Database;
+using osu.Game.Screens.Select.Details;
+using osu.Game.Rulesets.Osu.Difficulty;
+using osu.Game.Rulesets.Objects;
+using osu.Game.Rulesets.Osu.Objects;
+using osu.Game.Scoring.Legacy;
+using osu.Game.Rulesets.Osu.Mods;
 
 namespace PerfomanceCalculator
 {
