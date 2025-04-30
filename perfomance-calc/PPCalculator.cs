@@ -22,6 +22,7 @@ using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Scoring.Legacy;
 using osu.Game.Rulesets.Osu.Mods;
+using osu.Game.Rulesets.Difficulty;
 
 namespace PerfomanceCalculator
 {
@@ -41,17 +42,10 @@ namespace PerfomanceCalculator
         /// Calculates pp for given ruleset
         /// </summary>
         /// <param name="beatmapId">Beatmap ID</param>
-        /// <param name="maxCombo">Score's max combo</param>
-        /// <param name="mods">enabled mods in the score</param>
-        /// <param name="accuracy">You should get this value from osu!api if working with lazer scores. Otherwise you can just calculate accuracy if working with osu!stable</param>
-        /// <param name="countPerfect">Only for mania</param>
-        /// <param name="count300">Equals Great</param>
-        /// <param name="count100">Equals Ok, LargeTickHit</param>
-        /// <param name="countGood">Only for mania</param>
-        /// <param name="count50">Equals Meh, SmallTickHit</param>
-        /// <param name="largeTickMiss">Only for catch</param>
-        /// <param name="smallTickMiss">Only for catch</param>
-        /// <param name="missCount">Score's miss count</param>
+        /// <param name="scoreMaxCombo">Score max combo. If null, then beatmap's maximum combo will be used</param>
+        /// <param name="scoreMods">Score mods. If null, the no mods will be used (equals to lazer nomod score)</param>
+        /// <param name="scoreStatistics">Score statistics. If null, then beatmap's maximum statistics will be used</param>
+        /// <param name="scoreMaximumStatistics">For accuracy calculation. Score maximum statistics. Not necessarely should be equal to scoreProcessor.MaximumStatistics. If null, then beatmap's maximum statistics will be used</param>
         /// <param name="rulesetId">
         ///         The play mode for pp calculation.
         ///         Std = 0,
@@ -59,22 +53,18 @@ namespace PerfomanceCalculator
         ///         Catch = 2,
         ///         Mania = 3
         /// </param>
-        /// <returns>pp and accuracy</returns>
+        /// <returns>Total pp</returns>
         public async Task<double> CalculatePPAsync(
             int beatmapId,
-            int maxCombo,
-            Mod[] mods,
-            Dictionary<HitResult, int> statistics,
-            Dictionary<HitResult, int> maxStatistics,
+            int? scoreMaxCombo = null,
+            Mod[]? scoreMods = null,
+            Dictionary<HitResult, int>? scoreStatistics = null,
+            Dictionary<HitResult, int>? scoreMaximumStatistics = null,
             int rulesetId = 0)
         {
             try
             {
-                var beatmapBytes = await DownloadBeatmapAsync(beatmapId);
-                var workingBeatmap = ParseBeatmap(beatmapBytes);
-                if (workingBeatmap == null)
-                    throw new Exception("Failed to parse beatmap");
-
+                scoreMods ??= [];
                 Ruleset ruleset = rulesetId switch
                 {
                     0 => new OsuRuleset(),
@@ -83,25 +73,33 @@ namespace PerfomanceCalculator
                     3 => new ManiaRuleset(),
                     _ => new OsuRuleset()
                 };
+                // Download beatmap
+                byte[] beatmapBytes = await DownloadBeatmapAsync(beatmapId);
+                WorkingBeatmap workingBeatmap = ParseBeatmap(beatmapBytes);
+                IBeatmap playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods);
 
+                // Get score processor
+                ScoreProcessor scoreProcessor = ruleset.CreateScoreProcessor();
+                scoreProcessor.Mods.Value = scoreMods;
+                scoreProcessor.ApplyBeatmap(playableBeatmap);
+
+                // Get score info
+                scoreStatistics ??= scoreProcessor.MaximumStatistics;
+                scoreMaximumStatistics ??= scoreProcessor.MaximumStatistics;
+                scoreMaxCombo ??= scoreProcessor.MaximumCombo;
                 var scoreInfo = new ScoreInfo
                 {
-                    Accuracy = CalculateAccuracy(statistics, maxStatistics, ruleset.CreateScoreProcessor()),
-                    MaxCombo = maxCombo,
-                    Statistics = statistics,
-                    Ruleset = ruleset.RulesetInfo,
-                    BeatmapInfo = workingBeatmap.BeatmapInfo,
-                    Mods = mods
+                    Accuracy = CalculateAccuracy(scoreStatistics, scoreMaximumStatistics, scoreProcessor),
+                    Mods = scoreMods,
+                    MaxCombo = scoreMaxCombo.Value,
+                    Statistics = scoreStatistics,
+                    BeatmapInfo = playableBeatmap.BeatmapInfo,
                 };
 
-                // Get difficulty attributes
-                var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
-                var difficultyAttributes = difficultyCalculator.Calculate(mods);
-
                 // Calculate pp
-                var ppCalculator = ruleset.CreatePerformanceCalculator()!;
-                var ppAttributes = ppCalculator.Calculate(scoreInfo, difficultyAttributes);
-
+                DifficultyAttributes difficultyAttributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(scoreMods);
+                PerformanceCalculator ppCalculator = ruleset.CreatePerformanceCalculator()!;
+                PerformanceAttributes ppAttributes = ppCalculator.Calculate(scoreInfo, difficultyAttributes);
                 return ppAttributes.Total;
             }
             catch (Exception ex)
