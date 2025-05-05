@@ -7,7 +7,6 @@ using osu.Game.Database;
 using osu.Game.IO;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
-using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mania;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
@@ -18,7 +17,7 @@ using osu.Game.Skinning;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace PerfomanceCalculator
+namespace SosuBot.PerformanceCalculator
 {
     public class PPCalculator
     {
@@ -36,10 +35,11 @@ namespace PerfomanceCalculator
         /// Calculates pp for given ruleset
         /// </summary>
         /// <param name="beatmapId">Beatmap ID</param>
+        /// <param name="accuracy">Accuracy (optional). If not given, scoreStatistics will be used</param>
         /// <param name="scoreMaxCombo">Score max combo. If null, then beatmap's maximum combo will be used</param>
         /// <param name="scoreMods">Score mods. If null, the no mods will be used (equals to lazer nomod score)</param>
-        /// <param name="scoreStatistics">Score statistics. If null, then beatmap's maximum statistics will be used</param>
-        /// <param name="scoreMaximumStatistics">For accuracy calculation. Score maximum statistics. Not necessarely should be equal to scoreProcessor.MaximumStatistics. If null, then beatmap's maximum statistics will be used</param>
+        /// <param name="scoreStatistics">Score statistics. If null, then accuracy will be used</param>
+        /// <param name="scoreMaxStatistics">For accuracy calculation. Score maximum statistics. Not necessarely should be equal to scoreProcessor.MaximumStatistics. If null, then beatmap's maximum statistics will be used</param>
         /// <param name="rulesetId">
         ///         The play mode for pp calculation.
         ///         Std = 0,
@@ -50,15 +50,17 @@ namespace PerfomanceCalculator
         /// <returns>Total pp</returns>
         public async Task<double> CalculatePPAsync(
             int beatmapId,
+            double? accuracy = null,
             int? scoreMaxCombo = null,
             Mod[]? scoreMods = null,
             Dictionary<HitResult, int>? scoreStatistics = null,
-            Dictionary<HitResult, int>? scoreMaximumStatistics = null,
+            Dictionary<HitResult, int>? scoreMaxStatistics = null,
             int rulesetId = 0)
         {
             try
             {
                 scoreMods ??= [];
+
                 Ruleset ruleset = rulesetId switch
                 {
                     0 => new OsuRuleset(),
@@ -77,13 +79,24 @@ namespace PerfomanceCalculator
                 scoreProcessor.Mods.Value = scoreMods;
                 scoreProcessor.ApplyBeatmap(playableBeatmap);
 
+                // Set score maximum statistics
+                scoreMaxStatistics ??= scoreProcessor.MaximumStatistics;
+
                 // Get score info
-                scoreStatistics ??= scoreProcessor.MaximumStatistics;
-                scoreMaximumStatistics ??= scoreProcessor.MaximumStatistics;
+                if (scoreStatistics is null)
+                {
+                    accuracy ??= 1;
+                    scoreStatistics ??= AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100);
+                }
+                else
+                {
+                    accuracy ??= CalculateAccuracy(scoreStatistics, scoreMaxStatistics, scoreProcessor);
+                }
+
                 scoreMaxCombo ??= scoreProcessor.MaximumCombo;
                 var scoreInfo = new ScoreInfo
                 {
-                    Accuracy = CalculateAccuracy(scoreStatistics, scoreMaximumStatistics, scoreProcessor),
+                    Accuracy = accuracy.Value,
                     Mods = scoreMods,
                     MaxCombo = scoreMaxCombo.Value,
                     Statistics = scoreStatistics,
@@ -91,9 +104,12 @@ namespace PerfomanceCalculator
                 };
 
                 // Calculate pp
-                DifficultyAttributes difficultyAttributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(scoreMods);
-                PerformanceCalculator ppCalculator = ruleset.CreatePerformanceCalculator()!;
-                PerformanceAttributes ppAttributes = ppCalculator.Calculate(scoreInfo, difficultyAttributes);
+                var difficultyAttributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(scoreMods);
+                var dalist = ruleset.CreateDifficultyCalculator(workingBeatmap).CalculateTimed(scoreMods);
+                int scoreHitObjectsCount = GetHitObjectsCountForGivenStatistics(scoreStatistics);
+
+                var ppCalculator = ruleset.CreatePerformanceCalculator()!;
+                var ppAttributes = ppCalculator.Calculate(scoreInfo, dalist[scoreHitObjectsCount - 1].Attributes);
                 return ppAttributes.Total;
             }
             catch (Exception ex)
@@ -103,6 +119,18 @@ namespace PerfomanceCalculator
                     Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
                 throw;
             }
+        }
+
+        private int GetHitObjectsCountForGivenStatistics(Dictionary<HitResult, int> statistics)
+        {
+            int miss, meh, ok, good, great, perfect;
+            statistics.TryGetValue(HitResult.Miss, out miss);
+            statistics.TryGetValue(HitResult.Meh, out meh);
+            statistics.TryGetValue(HitResult.Ok, out ok);
+            statistics.TryGetValue(HitResult.Good, out good);
+            statistics.TryGetValue(HitResult.Great, out great);
+            statistics.TryGetValue(HitResult.Perfect, out perfect);
+            return miss + meh + ok + good + great + perfect;
         }
 
         private async Task<byte[]> DownloadBeatmapAsync(int beatmapId)
