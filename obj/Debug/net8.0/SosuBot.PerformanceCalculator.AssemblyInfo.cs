@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SosuBot.PerformanceCalculator")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+06e938680a5ff20484cd8a1c94d5fbaa0e978452")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cf170db65c18c07ec2489a33f3849810516b31ad")]
 [assembly: System.Reflection.AssemblyProductAttribute("SosuBot.PerformanceCalculator")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SosuBot.PerformanceCalculator")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
