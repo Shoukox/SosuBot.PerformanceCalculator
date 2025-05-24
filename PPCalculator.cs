@@ -86,7 +86,14 @@ namespace SosuBot.PerformanceCalculator
                 if (scoreStatistics is null)
                 {
                     accuracy ??= 1;
-                    scoreStatistics ??= AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100);
+                    scoreStatistics ??= rulesetId switch
+                    {
+                        0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
+                        1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
+                        2 => AccuracyTools.Catch.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
+                        3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
+                        _ => throw new NotImplementedException()
+                    };
                 }
                 else
                 {
@@ -104,12 +111,11 @@ namespace SosuBot.PerformanceCalculator
                 };
 
                 // Calculate pp
-                var difficultyAttributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(scoreMods);
-                var dalist = ruleset.CreateDifficultyCalculator(workingBeatmap).CalculateTimed(scoreMods);
-                int scoreHitObjectsCount = GetHitObjectsCountForGivenStatistics(scoreStatistics);
+                var timedDiffAttributes = ruleset.CreateDifficultyCalculator(workingBeatmap).CalculateTimed(scoreMods);
+                int scoreHitObjectsCount = playableBeatmap.HitObjects.Count;
 
                 var ppCalculator = ruleset.CreatePerformanceCalculator()!;
-                var ppAttributes = ppCalculator.Calculate(scoreInfo, dalist[scoreHitObjectsCount - 1].Attributes);
+                var ppAttributes = ppCalculator.Calculate(scoreInfo, timedDiffAttributes[scoreHitObjectsCount - 1].Attributes);
                 return ppAttributes.Total;
             }
             catch (Exception ex)
