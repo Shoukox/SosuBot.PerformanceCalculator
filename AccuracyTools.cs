@@ -12,6 +12,9 @@ namespace SosuBot.PerformanceCalculator
     {
         public static class Osu
         {
+            // todo
+            // methodparams as a single param class
+            // create an abstract class for every ruleset class 
             public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy, int? goods = null, int? mehs = null, int misses = 0, int largeTickMisses = 0, int sliderTailMisses = 0)
             {
                 // Use lazer info only if score has sliderhead accuracy
