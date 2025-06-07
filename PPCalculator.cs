@@ -157,7 +157,7 @@ namespace SosuBot.PerformanceCalculator
                 using var stream = new MemoryStream(beatmapBytes);
                 using var streamReader = new LineBufferedReader(stream);
 
-                string versionText = UTF32Encoding.Default.GetString(beatmapBytes[..20]);
+                string versionText = UTF32Encoding.Default.GetString(beatmapBytes[..30]);
                 int version = int.Parse(Regex.Match(versionText, @"v(?<ver>\d+)").Groups["ver"].Value);
 
                 var decoder = new LegacyBeatmapDecoder(version);
