@@ -10,3 +10,15 @@ C:\NotSys\Projects\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\SosuBo
 C:\NotSys\Projects\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\SosuBot.PerformanceCalculator.dll
 C:\NotSys\Projects\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\refint\SosuBot.PerformanceCalculator.dll
 C:\NotSys\Projects\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\ref\SosuBot.PerformanceCalculator.dll
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\bin\Debug\net8.0\SosuBot.PerformanceCalculator.deps.json
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\bin\Debug\net8.0\SosuBot.PerformanceCalculator.dll
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\SosuBot.PerformanceCalculator.csproj.AssemblyReference.cache
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\SosuBot.PerformanceCalculator.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\Sentry.Attributes.cs
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\SosuBot.PerformanceCalculator.AssemblyInfoInputs.cache
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\SosuBot.PerformanceCalculator.AssemblyInfo.cs
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\SosuBot.PerformanceCalculator.csproj.CoreCompileInputs.cache
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\SosuBot.PerformanceCalculator.sourcelink.json
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\SosuBot.PerformanceCalculator.dll
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\refint\SosuBot.PerformanceCalculator.dll
+C:\Users\shach\Desktop\SosuBot\SosuBot.PerformanceCalculator\obj\Debug\net8.0\ref\SosuBot.PerformanceCalculator.dll

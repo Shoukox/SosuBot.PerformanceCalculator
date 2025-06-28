@@ -10770,23 +10770,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Shahzod\\.nuget\\packages\\": {},
+    "C:\\Users\\shach\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\NotSys\\Projects\\SosuBot\\SosuBot.PerformanceCalculator\\SosuBot.PerformanceCalculator.csproj",
+      "projectUniqueName": "C:\\Users\\shach\\Desktop\\SosuBot\\SosuBot.PerformanceCalculator\\SosuBot.PerformanceCalculator.csproj",
       "projectName": "SosuBot.PerformanceCalculator",
-      "projectPath": "C:\\NotSys\\Projects\\SosuBot\\SosuBot.PerformanceCalculator\\SosuBot.PerformanceCalculator.csproj",
-      "packagesPath": "C:\\Users\\Shahzod\\.nuget\\packages\\",
-      "outputPath": "C:\\NotSys\\Projects\\SosuBot\\SosuBot.PerformanceCalculator\\obj\\",
+      "projectPath": "C:\\Users\\shach\\Desktop\\SosuBot\\SosuBot.PerformanceCalculator\\SosuBot.PerformanceCalculator.csproj",
+      "packagesPath": "C:\\Users\\shach\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\shach\\Desktop\\SosuBot\\SosuBot.PerformanceCalculator\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Shahzod\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\shach\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -10857,7 +10857,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.200/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.203/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
