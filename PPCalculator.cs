@@ -91,7 +91,14 @@ namespace SosuBot.PerformanceCalculator
                 if (scoreStatistics is null)
                 {
                     accuracy ??= 1;
-                    scoreStatistics ??= AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100);
+                    scoreStatistics ??= rulesetId switch
+                    {
+                        0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
+                        1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
+                        2 => AccuracyTools.Catch.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
+                        3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
+                        _ => throw new NotImplementedException()
+                    };
                 }
                 else
                 {
@@ -110,7 +117,6 @@ namespace SosuBot.PerformanceCalculator
 
                 // Calculate pp
                 var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
-
                 var timedDifficultyAttributes = difficultyCalculator.CalculateTimed(scoreMods, cancellationToken);
                 int scoreHitObjectsCount = GetHitObjectsCountForGivenStatistics(scoreStatistics);
 
@@ -157,7 +163,7 @@ namespace SosuBot.PerformanceCalculator
                 using var stream = new MemoryStream(beatmapBytes);
                 using var streamReader = new LineBufferedReader(stream);
 
-                string versionText = UTF32Encoding.Default.GetString(beatmapBytes[..20]);
+                string versionText = UTF32Encoding.Default.GetString(beatmapBytes[..30]);
                 int version = int.Parse(Regex.Match(versionText, @"v(?<ver>\d+)").Groups["ver"].Value);
 
                 var decoder = new LegacyBeatmapDecoder(version);
