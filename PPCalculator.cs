@@ -19,6 +19,10 @@ using System.Text.RegularExpressions;
 
 namespace SosuBot.PerformanceCalculator
 {
+    /*
+     * 1. TimedDifficultyAttributes instead of CalculateTimed()
+     * 2. Caching
+     */
     public class PPCalculator
     {
         private readonly HttpClient httpClient;
@@ -55,7 +59,8 @@ namespace SosuBot.PerformanceCalculator
             Mod[]? scoreMods = null,
             Dictionary<HitResult, int>? scoreStatistics = null,
             Dictionary<HitResult, int>? scoreMaxStatistics = null,
-            int rulesetId = 0)
+            int rulesetId = 0,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -104,12 +109,13 @@ namespace SosuBot.PerformanceCalculator
                 };
 
                 // Calculate pp
-                var difficultyAttributes = ruleset.CreateDifficultyCalculator(workingBeatmap).Calculate(scoreMods);
-                var dalist = ruleset.CreateDifficultyCalculator(workingBeatmap).CalculateTimed(scoreMods);
+                var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
+
+                var timedDifficultyAttributes = difficultyCalculator.CalculateTimed(scoreMods, cancellationToken);
                 int scoreHitObjectsCount = GetHitObjectsCountForGivenStatistics(scoreStatistics);
 
                 var ppCalculator = ruleset.CreatePerformanceCalculator()!;
-                var ppAttributes = ppCalculator.Calculate(scoreInfo, dalist[scoreHitObjectsCount - 1].Attributes);
+                var ppAttributes = ppCalculator.Calculate(scoreInfo, timedDifficultyAttributes[scoreHitObjectsCount - 1].Attributes);
                 return ppAttributes.Total;
             }
             catch (Exception ex)
