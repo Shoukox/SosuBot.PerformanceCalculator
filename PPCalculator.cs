@@ -7,6 +7,7 @@ using osu.Game.Database;
 using osu.Game.IO;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
+using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mania;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
@@ -14,6 +15,7 @@ using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Scoring;
 using osu.Game.Skinning;
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -25,13 +27,9 @@ namespace SosuBot.PerformanceCalculator
      */
     public class PPCalculator
     {
-        private readonly HttpClient httpClient;
-        private const string BEATMAP_DOWNLOAD_URL = "https://osu.ppy.sh/osu/";
-
+        private static ConcurrentDictionary<int, List<TimedDifficultyAttributes>> _cachedDifficultyAttrbiutes = new ConcurrentDictionary<int, List<TimedDifficultyAttributes>>();
         public PPCalculator()
         {
-            httpClient = new HttpClient();
-
             Logger.Level = LogLevel.Error;
         }
 
@@ -75,7 +73,16 @@ namespace SosuBot.PerformanceCalculator
                     _ => new OsuRuleset()
                 };
                 // Download beatmap
-                byte[] beatmapBytes = await DownloadBeatmapAsync(beatmapId);
+                byte[] beatmapBytes;
+                if (BeatmapsCaching.Instance.ShouldBeBeatmapCached(beatmapId))
+                {
+                    beatmapBytes = await BeatmapsCaching.Instance.CacheBeatmap(beatmapId);
+                }
+                else
+                {
+                    beatmapBytes = BeatmapsCaching.Instance.GetCachedBeatmapContentAsByteArray(beatmapId);
+                }
+
                 WorkingBeatmap workingBeatmap = ParseBeatmap(beatmapBytes);
                 IBeatmap playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods);
 
@@ -116,12 +123,21 @@ namespace SosuBot.PerformanceCalculator
                 };
 
                 // Calculate pp
-                var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
-                var timedDifficultyAttributes = difficultyCalculator.CalculateTimed(scoreMods, cancellationToken);
-                int scoreHitObjectsCount = GetHitObjectsCountForGivenStatistics(scoreStatistics);
+                List<TimedDifficultyAttributes> difficultyAttributes;
+                if (_cachedDifficultyAttrbiutes.ContainsKey(beatmapId))
+                {
+                    difficultyAttributes = _cachedDifficultyAttrbiutes[beatmapId];
+                }
+                else
+                {
+                    var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
+                    difficultyAttributes = difficultyCalculator.CalculateTimed(scoreMods, cancellationToken);
+                    _cachedDifficultyAttrbiutes.AddOrUpdate(beatmapId, difficultyAttributes, (_, _) => difficultyAttributes);
+                }
 
+                int scoreHitObjectsCount = GetHitObjectsCountForGivenStatistics(scoreStatistics);
                 var ppCalculator = ruleset.CreatePerformanceCalculator()!;
-                var ppAttributes = ppCalculator.Calculate(scoreInfo, timedDifficultyAttributes[scoreHitObjectsCount - 1].Attributes);
+                var ppAttributes = ppCalculator.Calculate(scoreInfo, difficultyAttributes[scoreHitObjectsCount - 1].Attributes);
                 return ppAttributes.Total;
             }
             catch (Exception ex)
@@ -143,16 +159,6 @@ namespace SosuBot.PerformanceCalculator
             statistics.TryGetValue(HitResult.Great, out great);
             statistics.TryGetValue(HitResult.Perfect, out perfect);
             return miss + meh + ok + good + great + perfect;
-        }
-
-        private async Task<byte[]> DownloadBeatmapAsync(int beatmapId)
-        {
-            var response = await httpClient.GetAsync($"{BEATMAP_DOWNLOAD_URL}{beatmapId}");
-
-            if (!response.IsSuccessStatusCode)
-                throw new Exception($"Failed to download beatmap {beatmapId}. Status code: {response.StatusCode}");
-
-            return await response.Content.ReadAsByteArrayAsync();
         }
 
         private WorkingBeatmap ParseBeatmap(byte[] beatmapBytes)
