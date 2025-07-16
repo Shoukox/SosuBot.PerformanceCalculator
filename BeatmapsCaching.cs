@@ -39,6 +39,7 @@ namespace SosuBot.PerformanceCalculator
         {
             httpClient = new HttpClient();
             CacheDirectory = cacheDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "cache");
+            CreateCacheDirectoryIfNeeded();
         }
 
         public void CreateCacheDirectoryIfNeeded()
