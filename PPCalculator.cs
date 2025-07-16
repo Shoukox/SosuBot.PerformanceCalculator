@@ -121,10 +121,8 @@ namespace SosuBot.PerformanceCalculator
                     _currentScoreProcessor = scoreProcessor;
                 }
 
-
                 // Set score maximum statistics
                 scoreMaxStatistics ??= scoreProcessor.MaximumStatistics;
-
 
                 // Get score info
                 if (scoreStatistics is null)
@@ -145,6 +143,8 @@ namespace SosuBot.PerformanceCalculator
                 }
 
                 scoreMaxCombo ??= scoreProcessor.MaximumCombo;
+                scoreProcessor.Dispose();
+                
                 var scoreInfo = new ScoreInfo
                 {
                     Accuracy = accuracy.Value,
