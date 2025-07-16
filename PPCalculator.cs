@@ -128,6 +128,7 @@ namespace SosuBot.PerformanceCalculator
                 DifficultyAttributes difficultyAttributes = _cachedDifficultyAttrbiutes.ContainsKey(beatmapId) 
                     ? _cachedDifficultyAttrbiutes[beatmapId] 
                     : difficultyCalculator.Calculate(cancellationToken);
+                _cachedDifficultyAttrbiutes.AddOrUpdate(beatmapId, difficultyAttributes, (_, oldD) => oldD);
 
                 int scoreHitObjectsCount = GetHitObjectsCountForGivenStatistics(scoreStatistics);
                 var ppCalculator = ruleset.CreatePerformanceCalculator()!;
