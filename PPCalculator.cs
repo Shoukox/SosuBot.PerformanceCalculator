@@ -27,7 +27,7 @@ namespace SosuBot.PerformanceCalculator
      */
     public class PPCalculator
     {
-        private static ConcurrentDictionary<int, List<TimedDifficultyAttributes>> _cachedDifficultyAttrbiutes = new ConcurrentDictionary<int, List<TimedDifficultyAttributes>>();
+        private static ConcurrentDictionary<int, DifficultyAttributes> _cachedDifficultyAttrbiutes = new ConcurrentDictionary<int, DifficultyAttributes>();
         public PPCalculator()
         {
             Logger.Level = LogLevel.Error;
@@ -72,6 +72,7 @@ namespace SosuBot.PerformanceCalculator
                     3 => new ManiaRuleset(),
                     _ => new OsuRuleset()
                 };
+
                 // Download beatmap
                 byte[] beatmapBytes;
                 if (BeatmapsCaching.Instance.ShouldBeBeatmapCached(beatmapId))
@@ -83,7 +84,7 @@ namespace SosuBot.PerformanceCalculator
                     beatmapBytes = BeatmapsCaching.Instance.GetCachedBeatmapContentAsByteArray(beatmapId);
                 }
 
-                WorkingBeatmap workingBeatmap = ParseBeatmap(beatmapBytes);
+                WorkingBeatmap workingBeatmap = ParseBeatmap(beatmapBytes, scoreStatistics == null ? null : GetHitObjectsCountForGivenStatistics(scoreStatistics));
                 IBeatmap playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods);
 
                 // Get score processor
@@ -123,21 +124,15 @@ namespace SosuBot.PerformanceCalculator
                 };
 
                 // Calculate pp
-                List<TimedDifficultyAttributes> difficultyAttributes;
-                if (_cachedDifficultyAttrbiutes.ContainsKey(beatmapId))
-                {
-                    difficultyAttributes = _cachedDifficultyAttrbiutes[beatmapId];
-                }
-                else
-                {
-                    var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
-                    difficultyAttributes = difficultyCalculator.CalculateTimed(scoreMods, cancellationToken);
-                    _cachedDifficultyAttrbiutes.AddOrUpdate(beatmapId, difficultyAttributes, (_, _) => difficultyAttributes);
-                }
+                var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
+                DifficultyAttributes difficultyAttributes = _cachedDifficultyAttrbiutes.ContainsKey(beatmapId) 
+                    ? _cachedDifficultyAttrbiutes[beatmapId] 
+                    : difficultyCalculator.Calculate(cancellationToken); ;
 
                 int scoreHitObjectsCount = GetHitObjectsCountForGivenStatistics(scoreStatistics);
                 var ppCalculator = ruleset.CreatePerformanceCalculator()!;
-                var ppAttributes = ppCalculator.Calculate(scoreInfo, difficultyAttributes[scoreHitObjectsCount - 1].Attributes);
+                PerformanceAttributes ppAttributes;
+                ppAttributes = ppCalculator.Calculate(scoreInfo, difficultyAttributes!);
                 return ppAttributes.Total;
             }
             catch (Exception ex)
@@ -161,7 +156,7 @@ namespace SosuBot.PerformanceCalculator
             return miss + meh + ok + good + great + perfect;
         }
 
-        private WorkingBeatmap ParseBeatmap(byte[] beatmapBytes)
+        private WorkingBeatmap ParseBeatmap(byte[] beatmapBytes, int? hitObjectsLimit = null)
         {
             try
             {
@@ -174,6 +169,11 @@ namespace SosuBot.PerformanceCalculator
 
                 var decoder = new LegacyBeatmapDecoder(version);
                 var beatmap = decoder.Decode(streamReader);
+
+                if (hitObjectsLimit != null)
+                {
+                    beatmap.HitObjects = beatmap.HitObjects.Take(hitObjectsLimit.Value).ToList();
+                }
 
                 return new LoadedBeatmap(beatmap);
             }
