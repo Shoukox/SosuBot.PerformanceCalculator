@@ -25,9 +25,17 @@ namespace SosuBot.PerformanceCalculator
      * 1. TimedDifficultyAttributes instead of CalculateTimed()
      * 2. Caching
      */
+    
+    /// <summary>
+    /// One instance for the same beatmap with same mods in order to use the calculated data of it.
+    /// </summary>
     public class PPCalculator
     {
-        private static ConcurrentDictionary<int, DifficultyAttributes> _cachedDifficultyAttrbiutes = new ConcurrentDictionary<int, DifficultyAttributes>();
+        private static readonly ConcurrentDictionary<int, DifficultyAttributes> CachedDifficultyAttrbiutes = new();
+
+        private WorkingBeatmap? _currentWorkingBeatmap;
+        private IBeatmap? _currentPlayableBeatmap;
+        private ScoreProcessor? _currentScoreProcessor;
         public PPCalculator()
         {
             Logger.Level = LogLevel.Error;
@@ -49,6 +57,7 @@ namespace SosuBot.PerformanceCalculator
         ///         Catch = 2,
         ///         Mania = 3
         /// </param>
+        /// <param name="cancellationToken">Cancellation token with cancellation support</param>
         /// <returns>Total pp</returns>
         public async Task<double> CalculatePPAsync(
             int beatmapId,
@@ -84,16 +93,25 @@ namespace SosuBot.PerformanceCalculator
                     beatmapBytes = BeatmapsCaching.Instance.GetCachedBeatmapContentAsByteArray(beatmapId);
                 }
 
-                WorkingBeatmap workingBeatmap = ParseBeatmap(beatmapBytes, scoreStatistics == null ? null : GetHitObjectsCountForGivenStatistics(scoreStatistics));
-                IBeatmap playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken);
+                WorkingBeatmap workingBeatmap = _currentWorkingBeatmap ?? ParseBeatmap(beatmapBytes, scoreStatistics == null ? null : GetHitObjectsCountForGivenStatistics(scoreStatistics));
+                _currentWorkingBeatmap = workingBeatmap;
+
+                IBeatmap playableBeatmap = _currentPlayableBeatmap ?? workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken);
+                _currentPlayableBeatmap = playableBeatmap;
 
                 // Get score processor
-                ScoreProcessor scoreProcessor = ruleset.CreateScoreProcessor();
-                scoreProcessor.Mods.Value = scoreMods;
-                scoreProcessor.ApplyBeatmap(playableBeatmap);
-
+                ScoreProcessor? scoreProcessor = _currentScoreProcessor;
+                if (scoreProcessor == null)
+                {
+                    scoreProcessor = ruleset.CreateScoreProcessor();
+                    scoreProcessor.Mods.Value = scoreMods;
+                    scoreProcessor.ApplyBeatmap(playableBeatmap);
+                }
+                _currentScoreProcessor = scoreProcessor;
+                
                 // Set score maximum statistics
                 scoreMaxStatistics ??= scoreProcessor.MaximumStatistics;
+
 
                 // Get score info
                 if (scoreStatistics is null)
@@ -125,15 +143,13 @@ namespace SosuBot.PerformanceCalculator
 
                 // Calculate pp
                 var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
-                DifficultyAttributes difficultyAttributes = _cachedDifficultyAttrbiutes.ContainsKey(beatmapId) 
-                    ? _cachedDifficultyAttrbiutes[beatmapId] 
+                DifficultyAttributes difficultyAttributes = CachedDifficultyAttrbiutes.TryGetValue(beatmapId, out var attrbiute) 
+                    ? attrbiute 
                     : difficultyCalculator.Calculate(cancellationToken);
-                _cachedDifficultyAttrbiutes.AddOrUpdate(beatmapId, difficultyAttributes, (_, oldD) => oldD);
+                CachedDifficultyAttrbiutes.AddOrUpdate(beatmapId, difficultyAttributes, (_, _) => difficultyAttributes);
 
-                int scoreHitObjectsCount = GetHitObjectsCountForGivenStatistics(scoreStatistics);
                 var ppCalculator = ruleset.CreatePerformanceCalculator()!;
-                PerformanceAttributes ppAttributes;
-                ppAttributes = ppCalculator.Calculate(scoreInfo, difficultyAttributes!);
+                PerformanceAttributes ppAttributes = await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes!, cancellationToken);
                 return ppAttributes.Total;
             }
             catch (Exception ex)
