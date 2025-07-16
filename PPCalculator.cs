@@ -85,7 +85,7 @@ namespace SosuBot.PerformanceCalculator
                 }
 
                 WorkingBeatmap workingBeatmap = ParseBeatmap(beatmapBytes, scoreStatistics == null ? null : GetHitObjectsCountForGivenStatistics(scoreStatistics));
-                IBeatmap playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods);
+                IBeatmap playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken);
 
                 // Get score processor
                 ScoreProcessor scoreProcessor = ruleset.CreateScoreProcessor();
@@ -127,7 +127,7 @@ namespace SosuBot.PerformanceCalculator
                 var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
                 DifficultyAttributes difficultyAttributes = _cachedDifficultyAttrbiutes.ContainsKey(beatmapId) 
                     ? _cachedDifficultyAttrbiutes[beatmapId] 
-                    : difficultyCalculator.Calculate(cancellationToken); ;
+                    : difficultyCalculator.Calculate(cancellationToken);
 
                 int scoreHitObjectsCount = GetHitObjectsCountForGivenStatistics(scoreStatistics);
                 var ppCalculator = ruleset.CreatePerformanceCalculator()!;
