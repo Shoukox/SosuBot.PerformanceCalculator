@@ -21,11 +21,6 @@ using System.Text.RegularExpressions;
 
 namespace SosuBot.PerformanceCalculator
 {
-    /*
-     * 1. TimedDifficultyAttributes instead of CalculateTimed()
-     * 2. Caching
-     */
-
     /// <summary>
     /// One instance for the same beatmap with same mods in order to use the calculated data of it.
     /// </summary>
