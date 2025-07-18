@@ -157,7 +157,7 @@ namespace SosuBot.PerformanceCalculator
                     CachedDifficultyAttrbiutes.TryGetValue(beatmapId, out difficultyAttributes);
                     if (difficultyAttributes == null)
                     {
-                        difficultyAttributes = difficultyCalculator.Calculate(cancellationToken);
+                        difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
                     }
 
                     CachedDifficultyAttrbiutes.AddOrUpdate(beatmapId, difficultyAttributes,
@@ -165,7 +165,7 @@ namespace SosuBot.PerformanceCalculator
                 }
                 else
                 {
-                    difficultyAttributes = difficultyCalculator.Calculate(cancellationToken);
+                    difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
                 }
 
 
