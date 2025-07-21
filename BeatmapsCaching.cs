@@ -12,14 +12,14 @@ namespace SosuBot.PerformanceCalculator
     internal sealed class BeatmapsCaching
     {
         #region Singleton
+
         public static BeatmapsCaching Instance
         {
-            get
-            {
-                return _instance.Value;
-            }
+            get { return _instance.Value; }
         }
+
         private static Lazy<BeatmapsCaching> _instance = new Lazy<BeatmapsCaching>(() => new BeatmapsCaching(), true);
+
         #endregion
 
         private readonly HttpClient httpClient;
@@ -49,6 +49,7 @@ namespace SosuBot.PerformanceCalculator
             {
                 Directory.CreateDirectory(CacheDirectory);
             }
+
             _semaphoreSlim.Release();
         }
 
@@ -58,6 +59,7 @@ namespace SosuBot.PerformanceCalculator
         }
 
         private bool IsBeatmapCached(int beatmapId) => File.Exists(GetCachedBeatmapPath(beatmapId));
+
         private bool IsBeatmapCacheExpired(int beatmapId)
         {
             DateTime lastModified = File.GetLastWriteTime(GetCachedBeatmapPath(beatmapId));
@@ -68,6 +70,7 @@ namespace SosuBot.PerformanceCalculator
         {
             return !IsBeatmapCached(beatmapId) || IsBeatmapCacheExpired(beatmapId);
         }
+
         public byte[] GetCachedBeatmapContentAsByteArray(int beatmapId)
         {
             if (!IsBeatmapCached(beatmapId)) throw new FileNotFoundException();
