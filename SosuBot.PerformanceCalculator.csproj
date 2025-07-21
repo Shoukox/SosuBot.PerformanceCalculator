@@ -18,6 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="OsuApi.Core" Version="0.0.413" />
     <PackageReference Include="ppy.osu.Game.Rulesets.Osu" Version="2025.710.0-lazer" />
     <PackageReference Include="ppy.osu.Game.Rulesets.Mania" Version="2025.710.0-lazer" />
     <PackageReference Include="ppy.osu.Game.Rulesets.Taiko" Version="2025.710.0-lazer" />
