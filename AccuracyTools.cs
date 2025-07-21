@@ -15,7 +15,8 @@ namespace SosuBot.PerformanceCalculator
             // todo
             // methodparams as a single param class
             // create an abstract class for every ruleset class 
-            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy, int? goods = null, int? mehs = null, int misses = 0, int largeTickMisses = 0, int sliderTailMisses = 0)
+            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
+                int? goods = null, int? mehs = null, int misses = 0, int largeTickMisses = 0, int sliderTailMisses = 0)
             {
                 // Use lazer info only if score has sliderhead accuracy
                 if (mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value))
@@ -24,11 +25,13 @@ namespace SosuBot.PerformanceCalculator
                 }
                 else
                 {
-                    return generateHitResults(beatmap, accuracy / 100, misses, mehs, goods, largeTickMisses, sliderTailMisses);
+                    return generateHitResults(beatmap, accuracy / 100, misses, mehs, goods, largeTickMisses,
+                        sliderTailMisses);
                 }
             }
 
-            private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy, int countMiss, int? countMeh, int? countGood, int? countLargeTickMisses, int? countSliderTailMisses)
+            private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy,
+                int countMiss, int? countMeh, int? countGood, int? countLargeTickMisses, int? countSliderTailMisses)
             {
                 int countGreat;
 
@@ -57,7 +60,8 @@ namespace SosuBot.PerformanceCalculator
                         double ratio50To100 = Math.Pow(1 - (relevantAccuracy - 0.25) / 0.75, 2);
 
                         // Derived from the formula: Accuracy = (6 * c300 + 2 * c100 + c50) / (6 * totalHits), assuming that c50 = c100 * ratio50to100
-                        double count100Estimate = 6 * relevantResultCount * (1 - relevantAccuracy) / (5 * ratio50To100 + 4);
+                        double count100Estimate =
+                            6 * relevantResultCount * (1 - relevantAccuracy) / (5 * ratio50To100 + 4);
 
                         // Get count50 according to c50 = c100 * ratio50to100
                         double count50Estimate = count100Estimate * ratio50To100;
@@ -105,18 +109,19 @@ namespace SosuBot.PerformanceCalculator
                 }
 
                 var result = new Dictionary<HitResult, int>
-            {
-                { HitResult.Great, countGreat },
-                { HitResult.Ok, countGood ?? 0 },
-                { HitResult.Meh, countMeh ?? 0 },
-                { HitResult.Miss, countMiss }
-            };
+                {
+                    { HitResult.Great, countGreat },
+                    { HitResult.Ok, countGood ?? 0 },
+                    { HitResult.Meh, countMeh ?? 0 },
+                    { HitResult.Miss, countMiss }
+                };
 
                 if (countLargeTickMisses != null)
                     result[HitResult.LargeTickMiss] = countLargeTickMisses.Value;
 
                 if (countSliderTailMisses != null)
-                    result[HitResult.SliderTailHit] = beatmap.HitObjects.Count(x => x is Slider) - countSliderTailMisses.Value;
+                    result[HitResult.SliderTailHit] =
+                        beatmap.HitObjects.Count(x => x is Slider) - countSliderTailMisses.Value;
 
                 return result;
             }
@@ -141,7 +146,8 @@ namespace SosuBot.PerformanceCalculator
 
                 if (statistics.TryGetValue(HitResult.LargeTickMiss, out int countLargeTickMiss))
                 {
-                    int countLargeTicks = beatmap.HitObjects.Sum(obj => obj.NestedHitObjects.Count(x => x is SliderTick or SliderRepeat));
+                    int countLargeTicks = beatmap.HitObjects.Sum(obj =>
+                        obj.NestedHitObjects.Count(x => x is SliderTick or SliderRepeat));
                     int countLargeTickHit = countLargeTicks - countLargeTickMiss;
 
                     total += 0.6 * countLargeTickHit;
@@ -151,11 +157,14 @@ namespace SosuBot.PerformanceCalculator
                 return total / max;
             }
         }
+
         public static class Taiko
         {
-            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy, int? goods = null, int misses = 0) => generateHitResults(accuracy / 100, beatmap, misses, goods);
+            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
+                int? goods = null, int misses = 0) => generateHitResults(accuracy / 100, beatmap, misses, goods);
 
-            private static Dictionary<HitResult, int> generateHitResults(double accuracy, IBeatmap beatmap, int countMiss, int? countGood)
+            private static Dictionary<HitResult, int> generateHitResults(double accuracy, IBeatmap beatmap,
+                int countMiss, int? countGood)
             {
                 int totalResultCount = beatmap.GetMaxCombo();
 
@@ -175,12 +184,12 @@ namespace SosuBot.PerformanceCalculator
                 }
 
                 return new Dictionary<HitResult, int>
-            {
-                { HitResult.Great, countGreat },
-                { HitResult.Ok, (int)countGood },
-                { HitResult.Meh, 0 },
-                { HitResult.Miss, countMiss }
-            };
+                {
+                    { HitResult.Great, countGreat },
+                    { HitResult.Ok, (int)countGood },
+                    { HitResult.Meh, 0 },
+                    { HitResult.Miss, countMiss }
+                };
             }
 
             public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics)
@@ -193,16 +202,24 @@ namespace SosuBot.PerformanceCalculator
                 return (double)((2 * countGreat) + countGood) / (2 * total);
             }
         }
+
         public static class Catch
         {
-            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy, int? goods = null, int? mehs = null, int misses = 0) => generateHitResults(beatmap, accuracy / 100, misses, mehs, goods);
+            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
+                int? goods = null, int? mehs = null, int misses = 0) =>
+                generateHitResults(beatmap, accuracy / 100, misses, mehs, goods);
 
-            private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy, int countMiss, int? countMeh, int? countGood)
+            private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy,
+                int countMiss, int? countMeh, int? countGood)
             {
                 int maxCombo = beatmap.GetMaxCombo();
-                int maxTinyDroplets = beatmap.HitObjects.OfType<JuiceStream>().Sum(s => s.NestedHitObjects.OfType<TinyDroplet>().Count());
-                int maxDroplets = beatmap.HitObjects.OfType<JuiceStream>().Sum(s => s.NestedHitObjects.OfType<Droplet>().Count()) - maxTinyDroplets;
-                int maxFruits = beatmap.HitObjects.Sum(h => h is Fruit ? 1 : (h as JuiceStream)?.NestedHitObjects.Count(n => n is Fruit) ?? 0);
+                int maxTinyDroplets = beatmap.HitObjects.OfType<JuiceStream>()
+                    .Sum(s => s.NestedHitObjects.OfType<TinyDroplet>().Count());
+                int maxDroplets =
+                    beatmap.HitObjects.OfType<JuiceStream>().Sum(s => s.NestedHitObjects.OfType<Droplet>().Count()) -
+                    maxTinyDroplets;
+                int maxFruits = beatmap.HitObjects.Sum(h =>
+                    h is Fruit ? 1 : (h as JuiceStream)?.NestedHitObjects.Count(n => n is Fruit) ?? 0);
 
                 // Either given or max value minus misses
                 int countDroplets = countGood ?? Math.Max(0, maxDroplets - countMiss);
@@ -212,41 +229,48 @@ namespace SosuBot.PerformanceCalculator
 
                 // Either given or the max amount of hit objects with respect to accuracy minus the already calculated fruits and drops.
                 // Negative if accuracy not feasable with missCount.
-                int countTinyDroplets = countMeh ?? (int)Math.Round(accuracy * (maxCombo + maxTinyDroplets)) - countFruits - countDroplets;
+                int countTinyDroplets = countMeh ?? (int)Math.Round(accuracy * (maxCombo + maxTinyDroplets)) -
+                    countFruits - countDroplets;
 
                 // Whatever droplets are left
                 int countTinyMisses = maxTinyDroplets - countTinyDroplets;
 
                 return new Dictionary<HitResult, int>
-            {
-                { HitResult.Great, countFruits },
-                { HitResult.LargeTickHit, countDroplets },
-                { HitResult.SmallTickHit, countTinyDroplets },
-                { HitResult.SmallTickMiss, countTinyMisses },
-                { HitResult.Miss, countMiss }
-            };
+                {
+                    { HitResult.Great, countFruits },
+                    { HitResult.LargeTickHit, countDroplets },
+                    { HitResult.SmallTickHit, countTinyDroplets },
+                    { HitResult.SmallTickMiss, countTinyMisses },
+                    { HitResult.Miss, countMiss }
+                };
             }
 
             public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics)
             {
-                double hits = statistics[HitResult.Great] + statistics[HitResult.LargeTickHit] + statistics[HitResult.SmallTickHit];
+                double hits = statistics[HitResult.Great] + statistics[HitResult.LargeTickHit] +
+                              statistics[HitResult.SmallTickHit];
                 double total = hits + statistics[HitResult.Miss] + statistics[HitResult.SmallTickMiss];
 
                 return hits / total;
             }
         }
+
         public static class Mania
         {
-            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy, int? greats = null, int? oks = null, int? goods = null, int? mehs = null, int misses = 0) => generateHitResults(beatmap, accuracy / 100, misses, mehs, oks, goods, greats);
+            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
+                int? greats = null, int? oks = null, int? goods = null, int? mehs = null, int misses = 0) =>
+                generateHitResults(beatmap, accuracy / 100, misses, mehs, oks, goods, greats);
 
-            private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy, int countMiss, int? countMeh, int? countOk, int? countGood, int? countGreat)
+            private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy,
+                int countMiss, int? countMeh, int? countOk, int? countGood, int? countGreat)
             {
                 // One judgement per normal note. Two judgements per hold note (head + tail).
                 int totalHits = beatmap.HitObjects.Count + beatmap.HitObjects.Count(ho => ho is HoldNote);
 
                 if (countMeh != null || countOk != null || countGood != null || countGreat != null)
                 {
-                    int countPerfect = totalHits - (countMiss + (countMeh ?? 0) + (countOk ?? 0) + (countGood ?? 0) + (countGreat ?? 0));
+                    int countPerfect = totalHits - (countMiss + (countMeh ?? 0) + (countOk ?? 0) + (countGood ?? 0) +
+                                                    (countGreat ?? 0));
 
                     return new Dictionary<HitResult, int>
                     {
@@ -288,14 +312,14 @@ namespace SosuBot.PerformanceCalculator
                 countMeh = remainingHits;
 
                 return new Dictionary<HitResult, int>
-            {
-                { HitResult.Perfect, perfects },
-                { HitResult.Great, greats },
-                { HitResult.Ok, oks },
-                { HitResult.Good, countGood.Value },
-                { HitResult.Meh, countMeh.Value },
-                { HitResult.Miss, countMiss }
-            };
+                {
+                    { HitResult.Perfect, perfects },
+                    { HitResult.Great, greats },
+                    { HitResult.Ok, oks },
+                    { HitResult.Good, countGood.Value },
+                    { HitResult.Meh, countMeh.Value },
+                    { HitResult.Miss, countMiss }
+                };
             }
         }
     }

@@ -35,7 +35,8 @@ namespace SosuBot.PerformanceCalculator
 
         private WorkingBeatmap? _currentWorkingBeatmap;
         private IBeatmap? _currentPlayableBeatmap;
-        private ScoreProcessor? _currentScoreProcessor;
+
+        public DifficultyAttributes LastDifficultyAttributes { get; set; }
 
         public PPCalculator()
         {
@@ -108,18 +109,9 @@ namespace SosuBot.PerformanceCalculator
 
 
                 // Get score processor
-                ScoreProcessor? scoreProcessor = _currentScoreProcessor;
-                if (scoreProcessor == null)
-                {
-                    scoreProcessor = ruleset.CreateScoreProcessor();
-                    scoreProcessor.Mods.Value = scoreMods;
-                    scoreProcessor.ApplyBeatmap(playableBeatmap);
-                }
-
-                if (beatmapHasAllHitobjects)
-                {
-                    _currentScoreProcessor = scoreProcessor;
-                }
+                ScoreProcessor? scoreProcessor = ruleset.CreateScoreProcessor();
+                scoreProcessor.Mods.Value = scoreMods;
+                scoreProcessor.ApplyBeatmap(playableBeatmap);
 
                 // Set score maximum statistics
                 scoreMaxStatistics ??= scoreProcessor.MaximumStatistics;
@@ -144,7 +136,7 @@ namespace SosuBot.PerformanceCalculator
 
                 scoreMaxCombo ??= scoreProcessor.MaximumCombo;
                 scoreProcessor.Dispose();
-                
+
                 var scoreInfo = new ScoreInfo
                 {
                     Accuracy = accuracy.Value,
@@ -162,7 +154,7 @@ namespace SosuBot.PerformanceCalculator
                     CachedDifficultyAttrbiutes.TryGetValue(beatmapId, out difficultyAttributes);
                     if (difficultyAttributes == null)
                     {
-                        difficultyAttributes = difficultyCalculator.Calculate(cancellationToken);
+                        difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
                     }
 
                     CachedDifficultyAttrbiutes.AddOrUpdate(beatmapId, difficultyAttributes,
@@ -170,9 +162,10 @@ namespace SosuBot.PerformanceCalculator
                 }
                 else
                 {
-                    difficultyAttributes = difficultyCalculator.Calculate(cancellationToken);
+                    difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
                 }
 
+                LastDifficultyAttributes = difficultyAttributes;
 
                 var ppCalculator = ruleset.CreatePerformanceCalculator()!;
                 PerformanceAttributes ppAttributes =
