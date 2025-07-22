@@ -3,7 +3,7 @@ using osu.Game.Rulesets.Mania.Mods;
 using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko.Mods;
-using OsuApi.Core.V2.Models;
+using OsuApi.V2.Models;
 using Mod = osu.Game.Rulesets.Mods.Mod;
 
 namespace SosuBot.PerformanceCalculator;
