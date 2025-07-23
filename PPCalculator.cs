@@ -26,7 +26,7 @@ namespace SosuBot.PerformanceCalculator
     /// </summary>
     public class PPCalculator
     {
-        private static readonly ConcurrentDictionary<int, DifficultyAttributes> CachedDifficultyAttrbiutes = new();
+        private static readonly ConcurrentDictionary<(int, Mod[]), DifficultyAttributes> CachedDifficultyAttrbiutes = new();
 
         private WorkingBeatmap? _currentWorkingBeatmap;
         private IBeatmap? _currentPlayableBeatmap;
@@ -146,13 +146,13 @@ namespace SosuBot.PerformanceCalculator
                 DifficultyAttributes? difficultyAttributes = null;
                 if (beatmapHasAllHitobjects)
                 {
-                    CachedDifficultyAttrbiutes.TryGetValue(beatmapId, out difficultyAttributes);
+                    CachedDifficultyAttrbiutes.TryGetValue((beatmapId, scoreMods), out difficultyAttributes);
                     if (difficultyAttributes == null)
                     {
                         difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
                     }
 
-                    CachedDifficultyAttrbiutes.AddOrUpdate(beatmapId, difficultyAttributes,
+                    CachedDifficultyAttrbiutes.AddOrUpdate((beatmapId, scoreMods), difficultyAttributes,
                         (_, _) => difficultyAttributes);
                 }
                 else
