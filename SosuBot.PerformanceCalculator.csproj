@@ -31,7 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\OsuApi\OsuApi\OsuApi.csproj" />
+    <ProjectReference Include="..\OsuApi\OsuApi\OsuApi.csproj" />
   </ItemGroup>
 
 </Project>
