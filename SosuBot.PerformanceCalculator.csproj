@@ -18,7 +18,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OsuApi.Core" Version="0.0.503" />
     <PackageReference Include="ppy.osu.Game.Rulesets.Osu" Version="2025.710.0-lazer" />
     <PackageReference Include="ppy.osu.Game.Rulesets.Mania" Version="2025.710.0-lazer" />
     <PackageReference Include="ppy.osu.Game.Rulesets.Taiko" Version="2025.710.0-lazer" />
@@ -29,6 +28,10 @@
     <Reference Include="OsuApi.Core">
       <HintPath>..\..\..\.nuget\packages\osuapi.core\0.0.413\lib\net8.0\OsuApi.Core.dll</HintPath>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\OsuApi\OsuApi\OsuApi.csproj" />
   </ItemGroup>
 
 </Project>

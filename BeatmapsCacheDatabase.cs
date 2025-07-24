@@ -9,23 +9,13 @@ using SharpCompress.Common;
 
 namespace SosuBot.PerformanceCalculator
 {
-    internal sealed class BeatmapsCaching
+    internal sealed class BeatmapsCacheDatabase
     {
-        #region Singleton
-
-        public static BeatmapsCaching Instance
-        {
-            get { return _instance.Value; }
-        }
-
-        private static Lazy<BeatmapsCaching> _instance = new Lazy<BeatmapsCaching>(() => new BeatmapsCaching(), true);
-
-        #endregion
-
-        private readonly HttpClient httpClient;
-        public const string BEATMAP_DOWNLOAD_URL = "https://osu.ppy.sh/osu/";
-        public const int CACHING_DAYS = 7;
-        public readonly string CacheDirectory;
+        private readonly HttpClient httpClient = new();
+        private const string BEATMAP_DOWNLOAD_URL = "https://osu.ppy.sh/osu/";
+        private const int CACHING_DAYS = 7;
+        
+        public string CacheDirectory { get; }
 
         private ConcurrentDictionary<int, SemaphoreSlim> _syncDict = new ConcurrentDictionary<int, SemaphoreSlim>();
         private SemaphoreSlim _semaphoreSlim = new SemaphoreSlim(1, 1);
@@ -35,11 +25,9 @@ namespace SosuBot.PerformanceCalculator
         /// Then creates the cache directory if needed
         /// </summary>
         /// <param name="cacheDirectory">If null, it uses the default directory (/cache) </param>
-        private BeatmapsCaching(string? cacheDirectory = null)
+        public BeatmapsCacheDatabase(string? cacheDirectory = null)
         {
-            httpClient = new HttpClient();
-            CacheDirectory = cacheDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "cache");
-            CreateCacheDirectoryIfNeeded();
+            CacheDirectory = cacheDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "cache", "beatmaps");
         }
 
         public void CreateCacheDirectoryIfNeeded()
@@ -49,7 +37,6 @@ namespace SosuBot.PerformanceCalculator
             {
                 Directory.CreateDirectory(CacheDirectory);
             }
-
             _semaphoreSlim.Release();
         }
 
@@ -79,12 +66,14 @@ namespace SosuBot.PerformanceCalculator
         }
 
         /// <summary>
-        /// Downloads and cached the given beatmap
+        /// Downloads and caches a given beatmap
         /// </summary>
         /// <param name="beatmapId"></param>
         /// <returns></returns>
         public async Task<byte[]> CacheBeatmap(int beatmapId)
         {
+            CreateCacheDirectoryIfNeeded();
+                
             var semaphoreSlim = _syncDict.GetOrAdd(beatmapId, new SemaphoreSlim(1, 1));
             await semaphoreSlim.WaitAsync();
 
@@ -94,7 +83,7 @@ namespace SosuBot.PerformanceCalculator
                 throw new Exception($"Failed to download beatmap {beatmapId}. Status code: {response.StatusCode}");
 
             byte[] contentAsByteArray = await response.Content.ReadAsByteArrayAsync();
-            File.WriteAllBytes(GetCachedBeatmapPath(beatmapId), contentAsByteArray);
+            await File.WriteAllBytesAsync(GetCachedBeatmapPath(beatmapId), contentAsByteArray);
 
             semaphoreSlim.Release();
             return contentAsByteArray;

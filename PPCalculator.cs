@@ -26,11 +26,21 @@ namespace SosuBot.PerformanceCalculator
     /// </summary>
     public class PPCalculator
     {
-        private static readonly ConcurrentDictionary<(int, Mod[]), DifficultyAttributes> CachedDifficultyAttrbiutes = new();
-
-        private WorkingBeatmap? _currentWorkingBeatmap;
-        private IBeatmap? _currentPlayableBeatmap;
-
+        /// <summary>
+        /// hitObjects is null, if it's the whole beatmap
+        /// </summary>
+        private static readonly ConcurrentDictionary<(int beatmapId, int? hitObjects, Mod[] mods), DifficultyAttributes> CachedDifficultyAttrbiutes = new();
+        
+        /// <summary>
+        /// hitObjects is null, if it's the whole beatmap
+        /// </summary>
+        private static readonly ConcurrentDictionary<(int beatmapId, int? hitObjects, Mod[] mods), WorkingBeatmap> CachedWorkingBeatmaps = new();
+        
+        /// <summary>
+        /// hitObjects is null, if it's the whole beatmap
+        /// </summary>
+        private static readonly ConcurrentDictionary<(int beatmapId, int? hitObjects, Mod[] mods), IBeatmap> CachedBeatmaps= new();
+        private static readonly BeatmapsCacheDatabase BeatmapsCacheDatabase = new();
         public DifficultyAttributes LastDifficultyAttributes { get; set; }
 
         public PPCalculator()
@@ -81,35 +91,34 @@ namespace SosuBot.PerformanceCalculator
 
                 // Download beatmap
                 byte[] beatmapBytes;
-                if (BeatmapsCaching.Instance.ShouldBeBeatmapCached(beatmapId))
+                if (BeatmapsCacheDatabase.ShouldBeBeatmapCached(beatmapId))
                 {
-                    beatmapBytes = await BeatmapsCaching.Instance.CacheBeatmap(beatmapId);
+                    beatmapBytes = await BeatmapsCacheDatabase.CacheBeatmap(beatmapId);
                 }
                 else
                 {
-                    beatmapBytes = BeatmapsCaching.Instance.GetCachedBeatmapContentAsByteArray(beatmapId);
+                    beatmapBytes = BeatmapsCacheDatabase.GetCachedBeatmapContentAsByteArray(beatmapId);
                 }
 
-                bool beatmapHasAllHitobjects = scoreStatistics == null;
-                WorkingBeatmap workingBeatmap = _currentWorkingBeatmap ?? ParseBeatmap(beatmapBytes,
-                    scoreStatistics == null ? null : GetHitObjectsCountForGivenStatistics(scoreStatistics));
-                IBeatmap playableBeatmap = _currentPlayableBeatmap ??
-                                           workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods,
-                                               cancellationToken);
-                if (beatmapHasAllHitobjects)
+                int? hitObjects = null;
+                if (scoreStatistics != null)
                 {
-                    _currentWorkingBeatmap = workingBeatmap;
-                    _currentPlayableBeatmap = playableBeatmap;
+                    hitObjects = GetHitObjectsCountForGivenStatistics(scoreStatistics);
                 }
 
+                var key = (beatmapId, hitObjects, scoreMods);
+                if (!CachedWorkingBeatmaps.TryGetValue(key, out var workingBeatmap))
+                {
+                    workingBeatmap = ParseBeatmap(beatmapBytes, hitObjects);
+                    CachedWorkingBeatmaps[key] = workingBeatmap;
+                }
+                if (!CachedBeatmaps.TryGetValue(key, out var playableBeatmap))
+                {
+                    playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken);
+                    CachedBeatmaps[key] = playableBeatmap;
+                }
 
-                // Get score processor
-                ScoreProcessor? scoreProcessor = ruleset.CreateScoreProcessor();
-                scoreProcessor.Mods.Value = scoreMods;
-                scoreProcessor.ApplyBeatmap(playableBeatmap);
-
-                // Set score maximum statistics
-                scoreMaxStatistics ??= scoreProcessor.MaximumStatistics;
+                scoreMaxStatistics ??= GetMaximumStatistics(playableBeatmap);
 
                 // Get score info
                 if (scoreStatistics is null)
@@ -126,11 +135,11 @@ namespace SosuBot.PerformanceCalculator
                 }
                 else
                 {
-                    accuracy ??= CalculateAccuracy(scoreStatistics, scoreMaxStatistics, scoreProcessor);
+                    using var scoreProcessor = ruleset.CreateScoreProcessor();
+                    accuracy ??= CalculateAccuracy(scoreStatistics, scoreMaxStatistics, ruleset.CreateScoreProcessor());
                 }
 
-                scoreMaxCombo ??= scoreProcessor.MaximumCombo;
-                scoreProcessor.Dispose();
+                scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
 
                 var scoreInfo = new ScoreInfo
                 {
@@ -143,28 +152,13 @@ namespace SosuBot.PerformanceCalculator
 
                 // Calculate pp
                 var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
-                DifficultyAttributes? difficultyAttributes = null;
-                if (beatmapHasAllHitobjects)
-                {
-                    CachedDifficultyAttrbiutes.TryGetValue((beatmapId, scoreMods), out difficultyAttributes);
-                    if (difficultyAttributes == null)
-                    {
-                        difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
-                    }
-
-                    CachedDifficultyAttrbiutes.AddOrUpdate((beatmapId, scoreMods), difficultyAttributes,
-                        (_, _) => difficultyAttributes);
-                }
-                else
+                if (!CachedDifficultyAttrbiutes.TryGetValue(key, out var difficultyAttributes))
                 {
                     difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
                 }
-
                 LastDifficultyAttributes = difficultyAttributes;
-
                 var ppCalculator = ruleset.CreatePerformanceCalculator()!;
-                PerformanceAttributes ppAttributes =
-                    await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes!, cancellationToken);
+                var ppAttributes = await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes, cancellationToken);
                 return ppAttributes.Total;
             }
             catch (Exception ex)
@@ -186,6 +180,13 @@ namespace SosuBot.PerformanceCalculator
             statistics.TryGetValue(HitResult.Great, out great);
             statistics.TryGetValue(HitResult.Perfect, out perfect);
             return miss + meh + ok + good + great + perfect;
+        }
+
+        private Dictionary<HitResult, int> GetMaximumStatistics(IBeatmap beatmap)
+        {
+            Dictionary<HitResult, int> statistics = new  Dictionary<HitResult, int>();
+            statistics[HitResult.Great] = beatmap.HitObjects.Count;
+            return statistics;
         }
 
         private WorkingBeatmap ParseBeatmap(byte[] beatmapBytes, int? hitObjectsLimit = null)
