@@ -5,6 +5,7 @@ using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
+// ReSharper disable InconsistentNaming
 
 namespace SosuBot.PerformanceCalculator
 {
@@ -21,11 +22,11 @@ namespace SosuBot.PerformanceCalculator
                 // Use lazer info only if score has sliderhead accuracy
                 if (mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value))
                 {
-                    return generateHitResults(beatmap, accuracy / 100, misses, mehs, goods, null, null);
+                    return generateHitResults(beatmap, accuracy, misses, mehs, goods, null, null);
                 }
                 else
                 {
-                    return generateHitResults(beatmap, accuracy / 100, misses, mehs, goods, largeTickMisses,
+                    return generateHitResults(beatmap, accuracy, misses, mehs, goods, largeTickMisses,
                         sliderTailMisses);
                 }
             }
@@ -160,11 +161,9 @@ namespace SosuBot.PerformanceCalculator
 
         public static class Taiko
         {
-            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
-                int? goods = null, int misses = 0) => generateHitResults(accuracy / 100, beatmap, misses, goods);
+            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy, int misses = 0, int? goods = null) => generateHitResults(accuracy, beatmap, misses, goods);
 
-            private static Dictionary<HitResult, int> generateHitResults(double accuracy, IBeatmap beatmap,
-                int countMiss, int? countGood)
+            private static Dictionary<HitResult, int> generateHitResults(double accuracy, IBeatmap beatmap, int countMiss, int? countGood)
             {
                 int totalResultCount = beatmap.GetMaxCombo();
 
@@ -192,7 +191,7 @@ namespace SosuBot.PerformanceCalculator
                 };
             }
 
-            public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics)
+            public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods)
             {
                 int countGreat = statistics[HitResult.Great];
                 int countGood = statistics[HitResult.Ok];
@@ -205,9 +204,8 @@ namespace SosuBot.PerformanceCalculator
 
         public static class Catch
         {
-            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
-                int? goods = null, int? mehs = null, int misses = 0) =>
-                generateHitResults(beatmap, accuracy / 100, misses, mehs, goods);
+            public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy, int misses = 0, int? mehs = null, int? goods = null) =>
+                generateHitResults(beatmap, accuracy, misses, mehs, goods);
 
             private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy,
                 int countMiss, int? countMeh, int? countGood)
@@ -245,7 +243,7 @@ namespace SosuBot.PerformanceCalculator
                 };
             }
 
-            public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics)
+            public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods)
             {
                 double hits = statistics[HitResult.Great] + statistics[HitResult.LargeTickHit] +
                               statistics[HitResult.SmallTickHit];
@@ -259,13 +257,15 @@ namespace SosuBot.PerformanceCalculator
         {
             public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
                 int? greats = null, int? oks = null, int? goods = null, int? mehs = null, int misses = 0) =>
-                generateHitResults(beatmap, accuracy / 100, misses, mehs, oks, goods, greats);
+                generateHitResults(beatmap, mods, accuracy, misses, mehs, oks, goods, greats);
 
-            private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy,
+            private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
                 int countMiss, int? countMeh, int? countOk, int? countGood, int? countGreat)
             {
                 // One judgement per normal note. Two judgements per hold note (head + tail).
-                int totalHits = beatmap.HitObjects.Count + beatmap.HitObjects.Count(ho => ho is HoldNote);
+                int totalHits = beatmap.HitObjects.Count;
+                if (!mods.Any(m => m is ModClassic))
+                    totalHits += beatmap.HitObjects.Count(ho => ho is HoldNote);
 
                 if (countMeh != null || countOk != null || countGood != null || countGreat != null)
                 {
@@ -283,32 +283,36 @@ namespace SosuBot.PerformanceCalculator
                     };
                 }
 
-                // Let Great=Perfect=6, Good=4, Ok=2, Meh=1, Miss=0. The total should be this.
-                int targetTotal = (int)Math.Round(accuracy * totalHits * 6);
+                int perfectValue = mods.Any(m => m is ModClassic) ? 60 : 61;
+
+                // Let Great = 60, Good = 40, Ok = 20, Meh = 10, Miss = 0, Perfect = 61 or 60 depending on CL. The total should be this.
+                int targetTotal = (int)Math.Round(accuracy * totalHits * perfectValue);
 
                 // Start by assuming every non miss is a meh
                 // This is how much increase is needed by the rest
                 int remainingHits = totalHits - countMiss;
-                int delta = targetTotal - remainingHits;
+                int delta = Math.Max(targetTotal - (10 * remainingHits), 0);
 
-                // Each great and perfect increases total by 5 (great-meh=5)
-                // There is no difference in accuracy between them, so just halve arbitrarily (favouring perfects for an odd number).
-                int greatsAndPerfects = Math.Min(delta / 5, remainingHits);
-                int greats = greatsAndPerfects / 2;
-                int perfects = greatsAndPerfects - greats;
-                delta -= (greats + perfects) * 5;
-                remainingHits -= greats + perfects;
+                // Each perfect increases total by 50 (CL) or 51 (no CL) (perfect - meh = 50 or 51)
+                int perfects = Math.Min(delta / (perfectValue - 10), remainingHits);
+                delta -= perfects * (perfectValue - 10);
+                remainingHits -= perfects;
 
-                // Each good increases total by 3 (good-meh=3).
-                countGood = Math.Min(delta / 3, remainingHits);
-                delta -= countGood.Value * 3;
+                // Each great increases total by 50 (great - meh = 50)
+                int greats = Math.Min(delta / 50, remainingHits);
+                delta -= greats * 50;
+                remainingHits -= greats;
+
+                // Each good increases total by 30 (good - meh = 30)
+                countGood = Math.Min(delta / 30, remainingHits);
+                delta -= countGood.Value * 30;
                 remainingHits -= countGood.Value;
 
-                // Each ok increases total by 1 (ok-meh=1).
-                int oks = delta;
+                // Each ok increases total by 10 (ok - meh = 10)
+                int oks = Math.Min(delta / 10, remainingHits);
                 remainingHits -= oks;
 
-                // Everything else is a meh, as initially assumed.
+                // Everything else is a meh, as initially assumed
                 countMeh = remainingHits;
 
                 return new Dictionary<HitResult, int>
@@ -320,6 +324,24 @@ namespace SosuBot.PerformanceCalculator
                     { HitResult.Meh, countMeh.Value },
                     { HitResult.Miss, countMiss }
                 };
+            }
+
+            public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods)
+            {
+                int countPerfect = statistics[HitResult.Perfect];
+                int countGreat = statistics[HitResult.Great];
+                int countGood = statistics[HitResult.Good];
+                int countOk = statistics[HitResult.Ok];
+                int countMeh = statistics[HitResult.Meh];
+                int countMiss = statistics[HitResult.Miss];
+
+                int perfectWeight = mods.Any(m => m is ModClassic) ? 300 : 305;
+
+                double total = (perfectWeight * countPerfect) + (300 * countGreat) + (200 * countGood) +
+                               (100 * countOk) + (50 * countMeh);
+                double max = perfectWeight * (countPerfect + countGreat + countGood + countOk + countMeh + countMiss);
+
+                return total / max;
             }
         }
     }
