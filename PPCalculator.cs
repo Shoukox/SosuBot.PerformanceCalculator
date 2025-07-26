@@ -118,7 +118,7 @@ namespace SosuBot.PerformanceCalculator
                     CachedBeatmaps[key] = playableBeatmap;
                 }
 
-                scoreMaxStatistics ??= GetMaximumStatistics(playableBeatmap);
+                scoreMaxStatistics ??= GetMaximumStatistics(playableBeatmap, rulesetId);
 
                 // Get score info
                 if (scoreStatistics is null)
@@ -126,17 +126,23 @@ namespace SosuBot.PerformanceCalculator
                     accuracy ??= 1;
                     scoreStatistics ??= rulesetId switch
                     {
-                        0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
-                        1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
-                        2 => AccuracyTools.Catch.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
-                        3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value * 100),
+                        0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value),
+                        1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value),
+                        2 => AccuracyTools.Catch.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value),
+                        3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value),
                         _ => throw new NotImplementedException()
                     };
                 }
                 else
                 {
-                    using var scoreProcessor = ruleset.CreateScoreProcessor();
-                    accuracy ??= CalculateAccuracy(scoreStatistics, scoreMaxStatistics, ruleset.CreateScoreProcessor());
+                    accuracy ??= rulesetId switch
+                    {
+                        0 => AccuracyTools.Osu.GetAccuracy(playableBeatmap, scoreStatistics),
+                        1 => AccuracyTools.Taiko.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
+                        2 => AccuracyTools.Catch.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
+                        3 => AccuracyTools.Mania.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
+                        _ => throw new NotImplementedException()
+                    };
                 }
 
                 scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
@@ -182,10 +188,26 @@ namespace SosuBot.PerformanceCalculator
             return miss + meh + ok + good + great + perfect;
         }
 
-        private Dictionary<HitResult, int> GetMaximumStatistics(IBeatmap beatmap)
+        
+        /// <summary>
+        /// Calculates maximum statistic for a given ruleset id
+        /// </summary>
+        /// <param name="beatmap"></param>
+        /// <param name="rulesetId"></param>
+        /// <returns></returns>
+        private Dictionary<HitResult, int> GetMaximumStatistics(IBeatmap beatmap, int rulesetId)
         {
             Dictionary<HitResult, int> statistics = new  Dictionary<HitResult, int>();
-            statistics[HitResult.Great] = beatmap.HitObjects.Count;
+
+            if (rulesetId == 3) // osu!mania
+            {
+                statistics[HitResult.Perfect] = beatmap.HitObjects.Count;
+            }
+            else
+            {
+                statistics[HitResult.Great] = beatmap.HitObjects.Count;
+            }
+
             return statistics;
         }
 
