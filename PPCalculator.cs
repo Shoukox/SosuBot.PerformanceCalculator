@@ -72,7 +72,6 @@ namespace SosuBot.PerformanceCalculator
             int? scoreMaxCombo = null,
             Mod[]? scoreMods = null,
             Dictionary<HitResult, int>? scoreStatistics = null,
-            Dictionary<HitResult, int>? scoreMaxStatistics = null,
             int rulesetId = 0,
             CancellationToken cancellationToken = default)
         {
@@ -117,9 +116,7 @@ namespace SosuBot.PerformanceCalculator
                     playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken);
                     CachedBeatmaps[key] = playableBeatmap;
                 }
-
-                scoreMaxStatistics ??= GetMaximumStatistics(playableBeatmap, rulesetId);
-
+                
                 // Get score info
                 if (scoreStatistics is null)
                 {
@@ -178,37 +175,13 @@ namespace SosuBot.PerformanceCalculator
 
         private int GetHitObjectsCountForGivenStatistics(Dictionary<HitResult, int> statistics)
         {
-            int miss, meh, ok, good, great, perfect;
-            statistics.TryGetValue(HitResult.Miss, out miss);
-            statistics.TryGetValue(HitResult.Meh, out meh);
-            statistics.TryGetValue(HitResult.Ok, out ok);
-            statistics.TryGetValue(HitResult.Good, out good);
-            statistics.TryGetValue(HitResult.Great, out great);
-            statistics.TryGetValue(HitResult.Perfect, out perfect);
+            statistics.TryGetValue(HitResult.Miss, out var miss);
+            statistics.TryGetValue(HitResult.Meh, out var meh);
+            statistics.TryGetValue(HitResult.Ok, out var ok);
+            statistics.TryGetValue(HitResult.Good, out var good);
+            statistics.TryGetValue(HitResult.Great, out var great);
+            statistics.TryGetValue(HitResult.Perfect, out var perfect);
             return miss + meh + ok + good + great + perfect;
-        }
-
-        
-        /// <summary>
-        /// Calculates maximum statistic for a given ruleset id
-        /// </summary>
-        /// <param name="beatmap"></param>
-        /// <param name="rulesetId"></param>
-        /// <returns></returns>
-        private Dictionary<HitResult, int> GetMaximumStatistics(IBeatmap beatmap, int rulesetId)
-        {
-            Dictionary<HitResult, int> statistics = new  Dictionary<HitResult, int>();
-
-            if (rulesetId == 3) // osu!mania
-            {
-                statistics[HitResult.Perfect] = beatmap.HitObjects.Count;
-            }
-            else
-            {
-                statistics[HitResult.Great] = beatmap.HitObjects.Count;
-            }
-
-            return statistics;
         }
 
         private WorkingBeatmap ParseBeatmap(byte[] beatmapBytes, int? hitObjectsLimit = null)
