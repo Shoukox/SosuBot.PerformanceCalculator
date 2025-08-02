@@ -18,10 +18,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="ppy.osu.Game.Rulesets.Osu" Version="2025.710.0-lazer" />
-    <PackageReference Include="ppy.osu.Game.Rulesets.Mania" Version="2025.710.0-lazer" />
-    <PackageReference Include="ppy.osu.Game.Rulesets.Taiko" Version="2025.710.0-lazer" />
-    <PackageReference Include="ppy.osu.Game.Rulesets.Catch" Version="2025.710.0-lazer" />
+    <PackageReference Include="ppy.osu.Game.Rulesets.Osu" Version="2025.729.0-tachyon" />
+    <PackageReference Include="ppy.osu.Game.Rulesets.Mania" Version="2025.729.0-tachyon" />
+    <PackageReference Include="ppy.osu.Game.Rulesets.Taiko" Version="2025.729.0-tachyon" />
+    <PackageReference Include="ppy.osu.Game.Rulesets.Catch" Version="2025.729.0-tachyon" />
   </ItemGroup>
 
   <ItemGroup>
