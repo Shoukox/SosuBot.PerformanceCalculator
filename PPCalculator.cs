@@ -16,8 +16,10 @@ using osu.Game.Rulesets.Taiko;
 using osu.Game.Scoring;
 using osu.Game.Skinning;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Text;
 using System.Text.RegularExpressions;
+using SosuBot.PerformanceCalculator.Models;
 
 namespace SosuBot.PerformanceCalculator
 {
@@ -29,17 +31,17 @@ namespace SosuBot.PerformanceCalculator
         /// <summary>
         /// hitObjects is null, if it's the whole beatmap
         /// </summary>
-        private static readonly ConcurrentDictionary<(int beatmapId, int? hitObjects, Mod[] mods), DifficultyAttributes> CachedDifficultyAttrbiutes = new();
+        private static readonly ConcurrentDictionary<DifficultyAttributesKey, DifficultyAttributes> CachedDifficultyAttrbiutes = new();
         
         /// <summary>
         /// hitObjects is null, if it's the whole beatmap
         /// </summary>
-        private static readonly ConcurrentDictionary<(int beatmapId, int? hitObjects, Mod[] mods), WorkingBeatmap> CachedWorkingBeatmaps = new();
+        private static readonly ConcurrentDictionary<DifficultyAttributesKey, WorkingBeatmap> CachedWorkingBeatmaps = new();
         
         /// <summary>
         /// hitObjects is null, if it's the whole beatmap
         /// </summary>
-        private static readonly ConcurrentDictionary<(int beatmapId, int? hitObjects, Mod[] mods), IBeatmap> CachedBeatmaps= new();
+        private static readonly ConcurrentDictionary<DifficultyAttributesKey, IBeatmap> CachedBeatmaps= new();
         private static readonly BeatmapsCacheDatabase BeatmapsCacheDatabase = new();
         public DifficultyAttributes LastDifficultyAttributes { get; set; }
 
@@ -105,7 +107,7 @@ namespace SosuBot.PerformanceCalculator
                     hitObjects = GetHitObjectsCountForGivenStatistics(scoreStatistics);
                 }
 
-                var key = (beatmapId, hitObjects, scoreMods);
+                DifficultyAttributesKey key = new(beatmapId, hitObjects, scoreMods);
                 if (!CachedWorkingBeatmaps.TryGetValue(key, out var workingBeatmap))
                 {
                     workingBeatmap = ParseBeatmap(beatmapBytes, hitObjects);
