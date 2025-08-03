@@ -1,37 +1,37 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Library</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <RootNamespace>SosuBot.PerformanceCalculator</RootNamespace>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <TargetFramework>net8.0</TargetFramework>
+        <RootNamespace>SosuBot.PerformanceCalculator</RootNamespace>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <PlatformTarget>AnyCPU</PlatformTarget>
+    </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DebugType>embedded</DebugType>
-  </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+        <DebugType>embedded</DebugType>
+    </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <DebugType>embedded</DebugType>
-  </PropertyGroup>
+    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+        <DebugType>embedded</DebugType>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="ppy.osu.Game.Rulesets.Osu" Version="2025.729.0-tachyon" />
-    <PackageReference Include="ppy.osu.Game.Rulesets.Mania" Version="2025.729.0-tachyon" />
-    <PackageReference Include="ppy.osu.Game.Rulesets.Taiko" Version="2025.729.0-tachyon" />
-    <PackageReference Include="ppy.osu.Game.Rulesets.Catch" Version="2025.729.0-tachyon" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="ppy.osu.Game.Rulesets.Osu" Version="2025.729.0-tachyon"/>
+        <PackageReference Include="ppy.osu.Game.Rulesets.Mania" Version="2025.729.0-tachyon"/>
+        <PackageReference Include="ppy.osu.Game.Rulesets.Taiko" Version="2025.729.0-tachyon"/>
+        <PackageReference Include="ppy.osu.Game.Rulesets.Catch" Version="2025.729.0-tachyon"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="OsuApi.Core">
-      <HintPath>..\..\..\.nuget\packages\osuapi.core\0.0.413\lib\net8.0\OsuApi.Core.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+    <ItemGroup>
+        <Reference Include="OsuApi.Core">
+            <HintPath>..\..\..\.nuget\packages\osuapi.core\0.0.413\lib\net8.0\OsuApi.Core.dll</HintPath>
+        </Reference>
+    </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\OsuApi\OsuApi\OsuApi.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\OsuApi\OsuApi\OsuApi.csproj"/>
+    </ItemGroup>
 
 </Project>

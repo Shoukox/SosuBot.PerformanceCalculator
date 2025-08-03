@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using osu.Game.Rulesets.Mods;
 
 namespace SosuBot.PerformanceCalculator.Models;
