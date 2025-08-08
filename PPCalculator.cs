@@ -14,11 +14,14 @@ using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mania;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
+using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Scoring;
 using osu.Game.Skinning;
 using SosuBot.PerformanceCalculator.Models;
+
+#pragma warning disable CS0618 // Type or member is obsolete
 
 namespace SosuBot.PerformanceCalculator;
 
@@ -75,12 +78,13 @@ public class PPCalculator
     /// <returns>Total pp</returns>
     public async Task<double> CalculatePPAsync(
         int beatmapId,
-        double? accuracy = null,
+        double accuracy,
         int? scoreMaxCombo = null,
         Mod[]? scoreMods = null,
         Dictionary<HitResult, int>? scoreStatistics = null,
         int rulesetId = 0,
         CancellationToken cancellationToken = default)
+
     {
         try
         {
@@ -127,57 +131,16 @@ public class PPCalculator
             }
 
             // Get score info
-            if (scoreStatistics is null && accuracy is not null) // If FC, calculate only for acc
+            if (scoreStatistics is null) // If FC, calculate only for acc
             {
-                scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy.Value);
+                scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy);
             }
-            else if (scoreStatistics is not null && accuracy is null)
-            {
-                accuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
-            }
-            else if
-                (scoreStatistics is not null &&
-                 accuracy is not null) // we have both accuracy and statistics from API. Adjust statistics using accuracy to save some API values like IgnoreMiss.
-            {
-                var calculatedScoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods,
-                    accuracy.Value,
-                    scoreStatistics.GetValueOrDefault(HitResult.Miss, 0),
-                    scoreStatistics.GetValueOrDefault(HitResult.Great, 0),
-                    scoreStatistics.GetValueOrDefault(HitResult.Ok, 0),
-                    scoreStatistics.GetValueOrDefault(HitResult.Good, 0),
-                    scoreStatistics.GetValueOrDefault(HitResult.Meh, 0));
-
-                calculatedScoreStatistics[HitResult.LargeTickHit] =
-                    scoreStatistics.GetValueOrDefault(HitResult.LargeTickHit, 0);
-                calculatedScoreStatistics[HitResult.LargeTickMiss] =
-                    scoreStatistics.GetValueOrDefault(HitResult.LargeTickMiss, 0);
-                calculatedScoreStatistics[HitResult.SliderTailHit] =
-                    scoreStatistics.GetValueOrDefault(HitResult.SliderTailHit, 0);
-                calculatedScoreStatistics[HitResult.IgnoreMiss] =
-                    scoreStatistics.GetValueOrDefault(HitResult.IgnoreMiss, 0);
-                calculatedScoreStatistics[HitResult.IgnoreHit] =
-                    scoreStatistics.GetValueOrDefault(HitResult.IgnoreHit, 0);
-                calculatedScoreStatistics[HitResult.SmallTickMiss] =
-                    scoreStatistics.GetValueOrDefault(HitResult.SmallTickMiss, 0);
-                calculatedScoreStatistics[HitResult.SmallTickHit] =
-                    scoreStatistics.GetValueOrDefault(HitResult.SmallTickHit, 0);
-                calculatedScoreStatistics[HitResult.SmallBonus] =
-                    scoreStatistics.GetValueOrDefault(HitResult.SmallBonus, 0);
-                calculatedScoreStatistics[HitResult.LargeBonus] =
-                    scoreStatistics.GetValueOrDefault(HitResult.LargeBonus, 0);
-                calculatedScoreStatistics[HitResult.ComboBreak] =
-                    scoreStatistics.GetValueOrDefault(HitResult.ComboBreak, 0);
-                foreach (var (k, p) in calculatedScoreStatistics)
-                {
-                    scoreStatistics[k] = p;
-                }
-            }
-
+            
             scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
 
             var scoreInfo = new ScoreInfo
             {
-                Accuracy = accuracy.Value,
+                Accuracy = accuracy,
                 Mods = scoreMods,
                 MaxCombo = scoreMaxCombo.Value,
                 Statistics = scoreStatistics,
@@ -222,11 +185,12 @@ public class PPCalculator
 
     private Dictionary<HitResult, int> CalculateScoreStatistics(int rulesetId, IBeatmap playableBeatmap,
         Mod[] scoreMods, double accuracy, int misses = 0, int? greatsMania = null, int? oksMania = null,
-        int? goods = null, int? mehs = null)
+        int? goods = null, int? mehs = null, int largeTickMisses = 0, int sliderTailHits = 0)
     {
         return rulesetId switch
         {
-            0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy, goods, mehs, misses),
+            0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy, goods, mehs, misses,
+                largeTickMisses, sliderTailHits),
             1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, goods),
             2 => AccuracyTools.Catch.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, mehs, goods),
             3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy, greatsMania, oksMania,

@@ -18,18 +18,18 @@ public static class AccuracyTools
         // methodparams as a single param class
         // create an abstract class for every ruleset class 
         public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
-            int? goods = null, int? mehs = null, int misses = 0, int largeTickMisses = 0, int sliderTailMisses = 0)
+            int? goods = null, int? mehs = null, int misses = 0, int largeTickMisses = 0, int sliderTailHits = 0)
         {
             // Use lazer info only if score has sliderhead accuracy
             if (mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value))
                 return generateHitResults(beatmap, accuracy, misses, mehs, goods, null, null);
 
             return generateHitResults(beatmap, accuracy, misses, mehs, goods, largeTickMisses,
-                sliderTailMisses);
+                sliderTailHits);
         }
 
         private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy,
-            int countMiss, int? countMeh, int? countGood, int? countLargeTickMisses, int? countSliderTailMisses)
+            int countMiss, int? countMeh, int? countGood, int? countLargeTickMisses, int? countSliderTailHits)
         {
             int countGreat;
 
@@ -117,9 +117,8 @@ public static class AccuracyTools
             if (countLargeTickMisses != null)
                 result[HitResult.LargeTickMiss] = countLargeTickMisses.Value;
 
-            if (countSliderTailMisses != null)
-                result[HitResult.SliderTailHit] =
-                    beatmap.HitObjects.Count(x => x is Slider) - countSliderTailMisses.Value;
+            if (countSliderTailHits != null)
+                result[HitResult.SliderTailHit] = countSliderTailHits.Value;
 
             return result;
         }
