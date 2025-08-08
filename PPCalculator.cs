@@ -59,7 +59,7 @@ public class PPCalculator
     /// <param name="accuracy">Accuracy (optional). If not given, scoreStatistics will be used</param>
     /// <param name="scoreMaxCombo">Score max combo. If null, then beatmap's maximum combo will be used</param>
     /// <param name="scoreMods">Score mods. If null, the no mods will be used (equals to lazer nomod score)</param>
-    /// <param name="scoreStatistics">Score statistics. If null, then accuracy will be used</param>
+    /// <param name="scoreStatistics">Score statistics. If null, then accuracy will be used to. For better results please pass score statistics from Score Model from API. Some values like IgnoreMiss come only from API.</param>
     /// <param name="scoreMaxStatistics">
     ///     For accuracy calculation. Score maximum statistics. Not necessarely should be equal to
     ///     scoreProcessor.MaximumStatistics. If null, then beatmap's maximum statistics will be used
@@ -119,28 +119,28 @@ public class PPCalculator
             }
 
             // Get score info
-            if (scoreStatistics is null)
+            if (scoreStatistics is null && accuracy is not null) // If FC, calculate only for acc
             {
-                accuracy ??= 1;
-                scoreStatistics ??= rulesetId switch
-                {
-                    0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value),
-                    1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value),
-                    2 => AccuracyTools.Catch.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value),
-                    3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy.Value),
-                    _ => throw new NotImplementedException()
-                };
+                scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy.Value);
             }
-            else
+            else if (scoreStatistics is not null && accuracy is null)
             {
-                accuracy ??= rulesetId switch
+                accuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
+            }
+            else if (scoreStatistics is not null && accuracy is not null) // we have both accuracy and statistics from API. Adjust statistics using accuracy to save some API values like IgnoreMiss.
+            {
+                var calculatedScoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy.Value, 
+                    scoreStatistics[HitResult.Miss], scoreStatistics[HitResult.Great], scoreStatistics[HitResult.Ok], 
+                    scoreStatistics[HitResult.Good], scoreStatistics[HitResult.Meh]);
+                
+                calculatedScoreStatistics[HitResult.LargeTickMiss] = scoreStatistics[HitResult.LargeTickMiss];
+                calculatedScoreStatistics[HitResult.SliderTailHit] = scoreStatistics[HitResult.SliderTailHit];
+                calculatedScoreStatistics[HitResult.IgnoreMiss] = scoreStatistics[HitResult.IgnoreMiss];
+                calculatedScoreStatistics[HitResult.IgnoreHit] = scoreStatistics[HitResult.IgnoreHit];
+                foreach (var (k, p) in calculatedScoreStatistics)
                 {
-                    0 => AccuracyTools.Osu.GetAccuracy(playableBeatmap, scoreStatistics),
-                    1 => AccuracyTools.Taiko.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
-                    2 => AccuracyTools.Catch.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
-                    3 => AccuracyTools.Mania.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
-                    _ => throw new NotImplementedException()
-                };
+                    scoreStatistics[k] = p;
+                }
             }
 
             scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
@@ -183,6 +183,30 @@ public class PPCalculator
         return miss + meh + ok + good + great + perfect;
     }
 
+    private Dictionary<HitResult, int> CalculateScoreStatistics(int rulesetId, IBeatmap playableBeatmap, Mod[] scoreMods, double accuracy, int misses = 0, int? greatsMania = null, int? oksMania = null, int? goods = null, int? mehs = null)
+    {
+        return rulesetId switch
+        {
+            0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy, goods, mehs, misses),
+            1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, goods),
+            2 => AccuracyTools.Catch.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, mehs, goods),
+            3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy, greatsMania, oksMania, goods, mehs),
+            _ => throw new NotImplementedException()
+        };
+    }
+
+    private double CalculateAccuracy(int rulesetId, IBeatmap playableBeatmap, Mod[] scoreMods, Dictionary<HitResult, int> scoreStatistics)
+    {
+        return rulesetId switch
+        {
+            0 => AccuracyTools.Osu.GetAccuracy(playableBeatmap, scoreStatistics),
+            1 => AccuracyTools.Taiko.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
+            2 => AccuracyTools.Catch.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
+            3 => AccuracyTools.Mania.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
+            _ => throw new NotImplementedException()
+        };
+    }
+
     private WorkingBeatmap ParseBeatmap(byte[] beatmapBytes, int? hitObjectsLimit = null)
     {
         try
@@ -206,12 +230,6 @@ public class PPCalculator
             Console.WriteLine($"Error parsing beatmap: {ex.Message}");
             throw;
         }
-    }
-
-    private double CalculateAccuracy(Dictionary<HitResult, int> statistics,
-        Dictionary<HitResult, int> maxStatistics, ScoreProcessor scoreProcessor)
-    {
-        return StandardisedScoreMigrationTools.ComputeAccuracy(statistics, maxStatistics, scoreProcessor);
     }
 }
 
