@@ -109,13 +109,21 @@ public class PPCalculator
             if (!CachedWorkingBeatmaps.TryGetValue(key, out var workingBeatmap))
             {
                 workingBeatmap = ParseBeatmap(beatmapBytes, hitObjects);
-                CachedWorkingBeatmaps[key] = workingBeatmap;
+
+                if (!scoreMods.Any(m => m is ModRandom))
+                {
+                    CachedWorkingBeatmaps[key] = workingBeatmap;
+                }
             }
 
             if (!CachedBeatmaps.TryGetValue(key, out var playableBeatmap))
             {
                 playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken);
-                CachedBeatmaps[key] = playableBeatmap;
+
+                if (!scoreMods.Any(m => m is ModRandom))
+                {
+                    CachedBeatmaps[key] = playableBeatmap;
+                }
             }
 
             // Get score info
@@ -127,16 +135,38 @@ public class PPCalculator
             {
                 accuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
             }
-            else if (scoreStatistics is not null && accuracy is not null) // we have both accuracy and statistics from API. Adjust statistics using accuracy to save some API values like IgnoreMiss.
+            else if
+                (scoreStatistics is not null &&
+                 accuracy is not null) // we have both accuracy and statistics from API. Adjust statistics using accuracy to save some API values like IgnoreMiss.
             {
-                var calculatedScoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy.Value, 
-                    scoreStatistics[HitResult.Miss], scoreStatistics[HitResult.Great], scoreStatistics[HitResult.Ok], 
-                    scoreStatistics[HitResult.Good], scoreStatistics[HitResult.Meh]);
-                
-                calculatedScoreStatistics[HitResult.LargeTickMiss] = scoreStatistics[HitResult.LargeTickMiss];
-                calculatedScoreStatistics[HitResult.SliderTailHit] = scoreStatistics[HitResult.SliderTailHit];
-                calculatedScoreStatistics[HitResult.IgnoreMiss] = scoreStatistics[HitResult.IgnoreMiss];
-                calculatedScoreStatistics[HitResult.IgnoreHit] = scoreStatistics[HitResult.IgnoreHit];
+                var calculatedScoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods,
+                    accuracy.Value,
+                    scoreStatistics.GetValueOrDefault(HitResult.Miss, 0),
+                    scoreStatistics.GetValueOrDefault(HitResult.Great, 0),
+                    scoreStatistics.GetValueOrDefault(HitResult.Ok, 0),
+                    scoreStatistics.GetValueOrDefault(HitResult.Good, 0),
+                    scoreStatistics.GetValueOrDefault(HitResult.Meh, 0));
+
+                calculatedScoreStatistics[HitResult.LargeTickHit] =
+                    scoreStatistics.GetValueOrDefault(HitResult.LargeTickHit, 0);
+                calculatedScoreStatistics[HitResult.LargeTickMiss] =
+                    scoreStatistics.GetValueOrDefault(HitResult.LargeTickMiss, 0);
+                calculatedScoreStatistics[HitResult.SliderTailHit] =
+                    scoreStatistics.GetValueOrDefault(HitResult.SliderTailHit, 0);
+                calculatedScoreStatistics[HitResult.IgnoreMiss] =
+                    scoreStatistics.GetValueOrDefault(HitResult.IgnoreMiss, 0);
+                calculatedScoreStatistics[HitResult.IgnoreHit] =
+                    scoreStatistics.GetValueOrDefault(HitResult.IgnoreHit, 0);
+                calculatedScoreStatistics[HitResult.SmallTickMiss] =
+                    scoreStatistics.GetValueOrDefault(HitResult.SmallTickMiss, 0);
+                calculatedScoreStatistics[HitResult.SmallTickHit] =
+                    scoreStatistics.GetValueOrDefault(HitResult.SmallTickHit, 0);
+                calculatedScoreStatistics[HitResult.SmallBonus] =
+                    scoreStatistics.GetValueOrDefault(HitResult.SmallBonus, 0);
+                calculatedScoreStatistics[HitResult.LargeBonus] =
+                    scoreStatistics.GetValueOrDefault(HitResult.LargeBonus, 0);
+                calculatedScoreStatistics[HitResult.ComboBreak] =
+                    scoreStatistics.GetValueOrDefault(HitResult.ComboBreak, 0);
                 foreach (var (k, p) in calculatedScoreStatistics)
                 {
                     scoreStatistics[k] = p;
@@ -157,7 +187,14 @@ public class PPCalculator
             // Calculate pp
             var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
             if (!CachedDifficultyAttrbiutes.TryGetValue(key, out var difficultyAttributes))
+            {
                 difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
+                if (!scoreMods.Any(m => m is ModRandom))
+                {
+                    CachedDifficultyAttrbiutes[key] = difficultyAttributes;
+                }
+            }
+
             LastDifficultyAttributes = difficultyAttributes;
             var ppCalculator = ruleset.CreatePerformanceCalculator()!;
             var ppAttributes = await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes, cancellationToken);
@@ -183,19 +220,23 @@ public class PPCalculator
         return miss + meh + ok + good + great + perfect;
     }
 
-    private Dictionary<HitResult, int> CalculateScoreStatistics(int rulesetId, IBeatmap playableBeatmap, Mod[] scoreMods, double accuracy, int misses = 0, int? greatsMania = null, int? oksMania = null, int? goods = null, int? mehs = null)
+    private Dictionary<HitResult, int> CalculateScoreStatistics(int rulesetId, IBeatmap playableBeatmap,
+        Mod[] scoreMods, double accuracy, int misses = 0, int? greatsMania = null, int? oksMania = null,
+        int? goods = null, int? mehs = null)
     {
         return rulesetId switch
         {
             0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy, goods, mehs, misses),
             1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, goods),
             2 => AccuracyTools.Catch.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, mehs, goods),
-            3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy, greatsMania, oksMania, goods, mehs),
+            3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy, greatsMania, oksMania,
+                goods, mehs),
             _ => throw new NotImplementedException()
         };
     }
 
-    private double CalculateAccuracy(int rulesetId, IBeatmap playableBeatmap, Mod[] scoreMods, Dictionary<HitResult, int> scoreStatistics)
+    private double CalculateAccuracy(int rulesetId, IBeatmap playableBeatmap, Mod[] scoreMods,
+        Dictionary<HitResult, int> scoreStatistics)
     {
         return rulesetId switch
         {
