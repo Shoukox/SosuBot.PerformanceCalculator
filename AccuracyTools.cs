@@ -18,7 +18,7 @@ public static class AccuracyTools
         // methodparams as a single param class
         // create an abstract class for every ruleset class 
         public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
-            int? goods = null, int? mehs = null, int misses = 0, int largeTickMisses = 0, int sliderTailHits = 0)
+            int? goods = null, int? mehs = null, int misses = 0, int? largeTickMisses = null, int? sliderTailHits = null)
         {
             // Use lazer info only if score has sliderhead accuracy
             if (mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value))
