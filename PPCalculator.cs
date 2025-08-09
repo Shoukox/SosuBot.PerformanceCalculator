@@ -135,6 +135,11 @@ public class PPCalculator
             {
                 scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy);
             }
+
+            if (scoreStatistics.GetValueOrDefault(HitResult.SliderTailHit) == -1)
+            {
+                scoreStatistics[HitResult.SliderTailHit] = playableBeatmap.HitObjects.Count(obj => obj is Slider);
+            }
             
             scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
 
