@@ -59,13 +59,12 @@ public class PPCalculator
     ///     Calculates pp for given ruleset
     /// </summary>
     /// <param name="beatmapId">Beatmap ID</param>
-    /// <param name="accuracy">Accuracy (optional). If not given, scoreStatistics will be used</param>
+    /// <param name="accuracy">Accuracy. If not given, scoreStatistics will be used</param>
     /// <param name="scoreMaxCombo">Score max combo. If null, then beatmap's maximum combo will be used</param>
     /// <param name="scoreMods">Score mods. If null, the no mods will be used (equals to lazer nomod score)</param>
-    /// <param name="scoreStatistics">Score statistics. If null, then accuracy will be used to. For better results please pass score statistics from Score Model from API. Some values like IgnoreMiss come only from API.</param>
-    /// <param name="scoreMaxStatistics">
-    ///     For accuracy calculation. Score maximum statistics. Not necessarely should be equal to
-    ///     scoreProcessor.MaximumStatistics. If null, then beatmap's maximum statistics will be used
+    /// <param name="scoreStatistics">
+    /// Score statistics. 
+    /// If null, then the calculation will be for a FC with given accuracy
     /// </param>
     /// <param name="rulesetId">
     ///     The play mode for pp calculation.
@@ -84,7 +83,6 @@ public class PPCalculator
         Dictionary<HitResult, int>? scoreStatistics = null,
         int rulesetId = 0,
         CancellationToken cancellationToken = default)
-
     {
         try
         {
@@ -107,6 +105,7 @@ public class PPCalculator
                 beatmapBytes = BeatmapsCacheDatabase.GetCachedBeatmapContentAsByteArray(beatmapId);
 
             int? hitObjects = null;
+            // if scoreStatistics is null, then it's full combo
             if (scoreStatistics != null) hitObjects = GetHitObjectsCountForGivenStatistics(scoreStatistics);
 
             DifficultyAttributesKey key = new(beatmapId, hitObjects, scoreMods);
@@ -134,11 +133,7 @@ public class PPCalculator
             if (scoreStatistics is null) // If FC, calculate only for acc
             {
                 scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy);
-            }
-
-            if (scoreStatistics.GetValueOrDefault(HitResult.SliderTailHit) == -1)
-            {
-                scoreStatistics[HitResult.SliderTailHit] = playableBeatmap.HitObjects.Count(obj => obj is Slider);
+                accuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
             }
             
             scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
@@ -190,7 +185,7 @@ public class PPCalculator
 
     private Dictionary<HitResult, int> CalculateScoreStatistics(int rulesetId, IBeatmap playableBeatmap,
         Mod[] scoreMods, double accuracy, int misses = 0, int? greatsMania = null, int? oksMania = null,
-        int? goods = null, int? mehs = null, int largeTickMisses = 0, int sliderTailHits = 0)
+        int? goods = null, int? mehs = null, int? largeTickMisses = null, int? sliderTailHits = null)
     {
         return rulesetId switch
         {
