@@ -167,14 +167,15 @@ public class PPCalculator
 
             // Calculate pp
             var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
-            if (!CachedDifficultyAttrbiutes.TryGetValue(key, out var difficultyAttributes))
-            {
-                difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
-                if (!scoreMods.Any(m => m is ModRandom))
-                {
-                    CachedDifficultyAttrbiutes[key] = difficultyAttributes;
-                }
-            }
+            var difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
+            //if (!CachedDifficultyAttrbiutes.TryGetValue(key, out var difficultyAttributes))
+            //{
+            //    difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
+            //    if (!scoreMods.Any(m => m is ModRandom))
+            //    {
+            //        CachedDifficultyAttrbiutes[key] = difficultyAttributes;
+            //    }
+            //}
 
             LastDifficultyAttributes = difficultyAttributes;
             var ppCalculator = ruleset.CreatePerformanceCalculator()!;
