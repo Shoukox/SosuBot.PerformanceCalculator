@@ -157,13 +157,12 @@ public class PPCalculator
 
             scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
 
-            var scoreInfo = new ScoreInfo
+            var scoreInfo = new ScoreInfo(playableBeatmap.BeatmapInfo, ruleset.RulesetInfo)
             {
                 Accuracy = scoreStatisticsAccuracy,
                 Mods = scoreMods,
                 MaxCombo = scoreMaxCombo.Value,
                 Statistics = scoreStatistics,
-                BeatmapInfo = playableBeatmap.BeatmapInfo
             };
 
             // Calculate pp
