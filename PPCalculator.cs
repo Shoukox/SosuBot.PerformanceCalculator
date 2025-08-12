@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Text;
 using System.Text.RegularExpressions;
+using NUnit.Framework.Constraints;
 using osu.Framework.Audio.Track;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.Logging;
@@ -75,9 +76,10 @@ public class PPCalculator
     /// </param>
     /// <param name="cancellationToken">Cancellation token with cancellation support</param>
     /// <returns>Total pp</returns>
-    public async Task<double> CalculatePPAsync(
+    public async Task<PPCalculationResult> CalculatePPAsync(
         int beatmapId,
         double accuracy,
+        bool passed = true,
         int? scoreMaxCombo = null,
         Mod[]? scoreMods = null,
         Dictionary<HitResult, int>? scoreStatistics = null,
@@ -105,8 +107,20 @@ public class PPCalculator
                 beatmapBytes = BeatmapsCacheDatabase.GetCachedBeatmapContentAsByteArray(beatmapId);
 
             int? hitObjects = null;
+
+            // impossible case. scoreStatistics null means fc, but a fc can't be not passed.
+            if(scoreStatistics == null && !passed)
+            {
+                throw new Exception("Impossible case: scoreStatistics = null and passed = false");
+            }
+
             // if scoreStatistics is null, then it's full combo
-            if (scoreStatistics != null) hitObjects = GetHitObjectsCountForGivenStatistics(scoreStatistics);
+            // scoreStatistics not null and not passed mean the scoreStatistics contains not all hitobjects of the map
+            // hitObjects is not null only if the score was not passed
+            if (scoreStatistics != null && !passed)
+            {
+                hitObjects = GetHitObjectsCountForGivenStatistics(scoreStatistics);
+            }
 
             DifficultyAttributesKey key = new(beatmapId, hitObjects, scoreMods);
             if (!CachedWorkingBeatmaps.TryGetValue(key, out var workingBeatmap))
@@ -132,15 +146,20 @@ public class PPCalculator
             // Get score info
             if (scoreStatistics is null) // If FC, calculate only for acc
             {
-                scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy);
-                accuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
+                int beatmapSliderTails = playableBeatmap.HitObjects.Count(x => x is Slider);
+                scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy,
+                    misses: 0,
+                    largeTickMisses: 0,
+                    sliderTailHits: beatmapSliderTails
+                );
             }
-            
+            double scoreStatisticsAccuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
+
             scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
 
             var scoreInfo = new ScoreInfo
             {
-                Accuracy = accuracy,
+                Accuracy = scoreStatisticsAccuracy,
                 Mods = scoreMods,
                 MaxCombo = scoreMaxCombo.Value,
                 Statistics = scoreStatistics,
@@ -161,7 +180,11 @@ public class PPCalculator
             LastDifficultyAttributes = difficultyAttributes;
             var ppCalculator = ruleset.CreatePerformanceCalculator()!;
             var ppAttributes = await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes, cancellationToken);
-            return ppAttributes.Total;
+
+            return new PPCalculationResult {
+                Pp = ppAttributes.Total,
+                CalculatedAccuracy = scoreStatisticsAccuracy
+            };
         }
         catch (Exception ex)
         {
@@ -184,8 +207,8 @@ public class PPCalculator
     }
 
     private Dictionary<HitResult, int> CalculateScoreStatistics(int rulesetId, IBeatmap playableBeatmap,
-        Mod[] scoreMods, double accuracy, int misses = 0, int? greatsMania = null, int? oksMania = null,
-        int? goods = null, int? mehs = null, int? largeTickMisses = null, int? sliderTailHits = null)
+        Mod[] scoreMods, double accuracy, int misses = 0, int? largeTickMisses = null, int? sliderTailHits = null, int? greatsMania = null, int? oksMania = null,
+        int? goods = null, int? mehs = null)
     {
         return rulesetId switch
         {
@@ -204,7 +227,7 @@ public class PPCalculator
     {
         return rulesetId switch
         {
-            0 => AccuracyTools.Osu.GetAccuracy(playableBeatmap, scoreStatistics),
+            0 => AccuracyTools.Osu.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
             1 => AccuracyTools.Taiko.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
             2 => AccuracyTools.Catch.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
             3 => AccuracyTools.Mania.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),

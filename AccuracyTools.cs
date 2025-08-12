@@ -20,9 +20,9 @@ public static class AccuracyTools
         public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
             int? goods = null, int? mehs = null, int misses = 0, int? largeTickMisses = null, int? sliderTailHits = null)
         {
-            // Use lazer info only if score has sliderhead accuracy
-            if (mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value))
-                return generateHitResults(beatmap, accuracy, misses, mehs, goods, null, null);
+            //// Use lazer info only if score has sliderhead accuracy
+            //if (mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value))
+            //    return generateHitResults(beatmap, accuracy, misses, mehs, goods, null, null);
 
             return generateHitResults(beatmap, accuracy, misses, mehs, goods, largeTickMisses,
                 sliderTailHits);
@@ -123,7 +123,7 @@ public static class AccuracyTools
             return result;
         }
 
-        public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics)
+        public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods)
         {
             var countGreat = statistics[HitResult.Great];
             var countGood = statistics[HitResult.Ok];
@@ -133,22 +133,24 @@ public static class AccuracyTools
             double total = 6 * countGreat + 2 * countGood + countMeh;
             double max = 6 * (countGreat + countGood + countMeh + countMiss);
 
-            if (statistics.TryGetValue(HitResult.SliderTailHit, out var countSliderTailHit))
+            if (!mods.Any(m => m is OsuModClassic))
             {
-                var countSliders = beatmap.HitObjects.Count(x => x is Slider);
+                if (statistics.TryGetValue(HitResult.SliderTailHit, out var countSliderTailHit))
+                {
+                    var countSliders = beatmap.HitObjects.Count(x => x is Slider);
 
-                total += 3 * countSliderTailHit;
-                max += 3 * countSliders;
-            }
+                    total += 3 * countSliderTailHit;
+                    max += 3 * countSliders;
+                }
+                if (statistics.TryGetValue(HitResult.LargeTickMiss, out var countLargeTickMiss))
+                {
+                    var countLargeTicks = beatmap.HitObjects.Sum(obj =>
+                        obj.NestedHitObjects.Count(x => x is SliderTick or SliderRepeat));
+                    var countLargeTickHit = countLargeTicks - countLargeTickMiss;
 
-            if (statistics.TryGetValue(HitResult.LargeTickMiss, out var countLargeTickMiss))
-            {
-                var countLargeTicks = beatmap.HitObjects.Sum(obj =>
-                    obj.NestedHitObjects.Count(x => x is SliderTick or SliderRepeat));
-                var countLargeTickHit = countLargeTicks - countLargeTickMiss;
-
-                total += 0.6 * countLargeTickHit;
-                max += 0.6 * countLargeTicks;
+                    total += 0.6 * countLargeTickHit;
+                    max += 0.6 * countLargeTicks;
+                }
             }
 
             return total / max;
