@@ -15,6 +15,7 @@ using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mania;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
+using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko;
@@ -109,7 +110,7 @@ public class PPCalculator
             int? hitObjects = null;
 
             // impossible case. scoreStatistics null means fc, but a fc can't be not passed.
-            if(scoreStatistics == null && !passed)
+            if (scoreStatistics == null && !passed)
             {
                 throw new Exception("Impossible case: scoreStatistics = null and passed = false");
             }
@@ -122,24 +123,36 @@ public class PPCalculator
                 hitObjects = GetHitObjectsCountForGivenStatistics(scoreStatistics);
             }
 
-            DifficultyAttributesKey key = new(beatmapId, hitObjects, scoreMods);
+            bool cache = false;
+
+            DifficultyAttributesKey key = new(beatmapId, hitObjects, scoreMods.OrderBy(m => m.Acronym).ToArray());
+
+            int hashCode = GetHashCode(); 
+            Console.WriteLine($"[{hashCode}] bool cache = {cache}");
+            Console.WriteLine(
+                $"[{hashCode}] Current key: {key.BeatmapId} {key.HitObjects} {Newtonsoft.Json.JsonConvert.SerializeObject(key.Mods)}");
+
             if (!CachedWorkingBeatmaps.TryGetValue(key, out var workingBeatmap))
             {
                 workingBeatmap = ParseBeatmap(beatmapBytes, hitObjects);
+                Console.WriteLine($"[{hashCode}] Parsed beatmap");
 
-                if (!scoreMods.Any(m => m is ModRandom))
+                if (cache && !scoreMods.Any(m => m is OsuModRandom))
                 {
                     CachedWorkingBeatmaps[key] = workingBeatmap;
+                    Console.WriteLine($"[{hashCode}] Cache the parsed beatmap");
                 }
             }
 
             if (!CachedBeatmaps.TryGetValue(key, out var playableBeatmap))
             {
                 playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken);
+                Console.WriteLine($"[{hashCode}] Parsed a working beatmap => playable beatmap");
 
-                if (!scoreMods.Any(m => m is ModRandom))
+                if (cache && !scoreMods.Any(m => m is ModRandom))
                 {
                     CachedBeatmaps[key] = playableBeatmap;
+                    Console.WriteLine($"[{hashCode}] Cache the playable beatmap");
                 }
             }
 
@@ -153,6 +166,7 @@ public class PPCalculator
                     sliderTailHits: beatmapSliderTails
                 );
             }
+
             double scoreStatisticsAccuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
 
             scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
@@ -167,21 +181,26 @@ public class PPCalculator
 
             // Calculate pp
             var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
-            var difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
-            //if (!CachedDifficultyAttrbiutes.TryGetValue(key, out var difficultyAttributes))
-            //{
-            //    difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
-            //    if (!scoreMods.Any(m => m is ModRandom))
-            //    {
-            //        CachedDifficultyAttrbiutes[key] = difficultyAttributes;
-            //    }
-            //}
+            if (!CachedDifficultyAttrbiutes.TryGetValue(key, out var difficultyAttributes))
+            {
+                difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
+                Console.WriteLine($"[{hashCode}] Calculated difficulty attributes");
+                
+                if (cache && !scoreMods.Any(m => m is ModRandom))
+                {
+                    CachedDifficultyAttrbiutes[key] = difficultyAttributes;
+                    Console.WriteLine($"[{hashCode}] Cached the difficulty attributes");
+                }
+            }
 
             LastDifficultyAttributes = difficultyAttributes;
             var ppCalculator = ruleset.CreatePerformanceCalculator()!;
             var ppAttributes = await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes, cancellationToken);
 
-            return new PPCalculationResult {
+            Console.WriteLine($"[{hashCode}] Calculated total pp: {ppAttributes.Total}");
+            
+            return new PPCalculationResult
+            {
                 Pp = ppAttributes.Total,
                 CalculatedAccuracy = scoreStatisticsAccuracy
             };
@@ -207,7 +226,8 @@ public class PPCalculator
     }
 
     private Dictionary<HitResult, int> CalculateScoreStatistics(int rulesetId, IBeatmap playableBeatmap,
-        Mod[] scoreMods, double accuracy, int misses = 0, int? largeTickMisses = null, int? sliderTailHits = null, int? greatsMania = null, int? oksMania = null,
+        Mod[] scoreMods, double accuracy, int misses = 0, int? largeTickMisses = null, int? sliderTailHits = null,
+        int? greatsMania = null, int? oksMania = null,
         int? goods = null, int? mehs = null)
     {
         return rulesetId switch
