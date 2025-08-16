@@ -49,6 +49,12 @@ public class PPCalculator
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, IBeatmap> CachedBeatmaps = new();
 
     private static readonly BeatmapsCacheDatabase BeatmapsCacheDatabase = new();
+    
+    /// <summary>
+    /// Whether to cache the values
+    /// </summary>
+    private bool _cache = true;
+    
 
     public PPCalculator()
     {
@@ -123,12 +129,10 @@ public class PPCalculator
                 hitObjects = GetHitObjectsCountForGivenStatistics(scoreStatistics);
             }
 
-            bool cache = false;
-
             DifficultyAttributesKey key = new(beatmapId, hitObjects, scoreMods.OrderBy(m => m.Acronym).ToArray());
 
             int hashCode = GetHashCode(); 
-            Console.WriteLine($"[{hashCode}] bool cache = {cache}");
+            Console.WriteLine($"[{hashCode}] bool cache = {_cache}");
             Console.WriteLine(
                 $"[{hashCode}] Current key: {key.BeatmapId} {key.HitObjects} {Newtonsoft.Json.JsonConvert.SerializeObject(key.Mods)}");
 
@@ -137,7 +141,7 @@ public class PPCalculator
                 workingBeatmap = ParseBeatmap(beatmapBytes, hitObjects);
                 Console.WriteLine($"[{hashCode}] Parsed beatmap");
 
-                if (cache && !scoreMods.Any(m => m is OsuModRandom))
+                if (_cache && !scoreMods.Any(m => m is OsuModRandom))
                 {
                     CachedWorkingBeatmaps[key] = workingBeatmap;
                     Console.WriteLine($"[{hashCode}] Cache the parsed beatmap");
@@ -149,7 +153,7 @@ public class PPCalculator
                 playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken);
                 Console.WriteLine($"[{hashCode}] Parsed a working beatmap => playable beatmap");
 
-                if (cache && !scoreMods.Any(m => m is ModRandom))
+                if (_cache && !scoreMods.Any(m => m is ModRandom))
                 {
                     CachedBeatmaps[key] = playableBeatmap;
                     Console.WriteLine($"[{hashCode}] Cache the playable beatmap");
@@ -186,7 +190,7 @@ public class PPCalculator
                 difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken);
                 Console.WriteLine($"[{hashCode}] Calculated difficulty attributes");
                 
-                if (cache && !scoreMods.Any(m => m is ModRandom))
+                if (_cache && !scoreMods.Any(m => m is ModRandom))
                 {
                     CachedDifficultyAttrbiutes[key] = difficultyAttributes;
                     Console.WriteLine($"[{hashCode}] Cached the difficulty attributes");
