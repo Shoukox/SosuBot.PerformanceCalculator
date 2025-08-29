@@ -38,9 +38,8 @@ internal sealed class BeatmapsCacheDatabase
     private bool IsBeatmapCached(int beatmapId)
     {
         string filePath = GetCachedBeatmapPath(beatmapId);
-        bool exists = File.Exists(filePath);
-        bool notEmpty = !string.IsNullOrEmpty(File.ReadAllText(filePath).Trim());
-        return exists && notEmpty;
+        return File.Exists(filePath) && 
+               !string.IsNullOrEmpty(File.ReadAllText(filePath).Trim());
     }
 
     private bool IsBeatmapCacheExpired(int beatmapId)
