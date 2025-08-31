@@ -82,7 +82,7 @@ public class PPCalculator
     /// <returns>Total pp</returns>
     public async Task<PPCalculationResult> CalculatePpAsync(
         int beatmapId,
-        double accuracy,
+        double? accuracy = null,
         bool passed = true,
         int? scoreMaxCombo = null,
         Mod[]? scoreMods = null,
@@ -161,7 +161,7 @@ public class PPCalculator
             if (scoreStatistics is null) // If FC, calculate only for acc
             {
                 int beatmapSliderTails = playableBeatmap.HitObjects.Count(x => x is Slider);
-                scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy,
+                scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy!.Value,
                     misses: 0,
                     largeTickMisses: 0,
                     sliderTailHits: beatmapSliderTails
