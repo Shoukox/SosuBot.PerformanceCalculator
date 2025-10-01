@@ -19,7 +19,6 @@ using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Scoring;
 using osu.Game.Skinning;
-using SosuBot.Logging;
 using SosuBot.PerformanceCalculator.Models;
 
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -50,13 +49,38 @@ public class PPCalculator
 
     private static readonly BeatmapsCacheDatabase BeatmapsCacheDatabase = new();
     
-    private static readonly ILogger Logger = ApplicationLogging.CreateLogger(nameof(PPCalculator));
+    /// <summary>
+    /// Logger
+    /// </summary>
+    public ILogger Logger { get; set; } 
     
     /// <summary>
     /// Whether to cache the values
     /// </summary>
     private readonly bool _cache = true;
-    
+
+    /// <summary>
+    /// Creates an instance of <see cref="PPCalculator"/>
+    /// </summary>
+    /// <param name="logger">Used logger. If not provided, a default instance from <see cref="LoggerFactory"/> with console logging and logging_level=debug will be used</param>
+    public PPCalculator(ILogger? logger = null)
+    {
+        // Setup default logger if needed
+        if (logger == null)
+        {
+            using var loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.AddSimpleConsole(options => options.SingleLine = true);
+                builder.SetMinimumLevel(LogLevel.Debug);
+            });
+            Logger = loggerFactory.CreateLogger(nameof(PPCalculator));
+        }
+        else
+        {
+            Logger = logger;
+        }
+    }
+
     public DifficultyAttributes? LastDifficultyAttributes { get; private set; }
 
     /// <summary>
