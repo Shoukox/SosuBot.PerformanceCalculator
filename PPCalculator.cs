@@ -2,8 +2,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
-using osu.Framework.Audio.Track;
-using osu.Framework.Graphics.Textures;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.IO;
@@ -18,7 +16,6 @@ using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Scoring;
-using osu.Game.Skinning;
 using SosuBot.PerformanceCalculator.Models;
 
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -309,41 +306,5 @@ public class PPCalculator
             Logger.LogInformation($"Error parsing beatmap: {ex.Message}");
             throw;
         }
-    }
-}
-
-// Simple implementation of WorkingBeatmap for the calculator
-public class LoadedBeatmap : WorkingBeatmap
-{
-    private readonly IBeatmap _beatmap;
-
-    public LoadedBeatmap(IBeatmap beatmap) : base(beatmap.BeatmapInfo, null)
-    {
-        _beatmap = beatmap;
-    }
-
-    public override Stream? GetStream(string storagePath)
-    {
-        return null;
-    }
-
-    public override Texture? GetBackground()
-    {
-        return null;
-    }
-
-    protected override IBeatmap GetBeatmap()
-    {
-        return _beatmap;
-    }
-
-    protected override Track? GetBeatmapTrack()
-    {
-        return null;
-    }
-
-    protected override ISkin? GetSkin()
-    {
-        return null;
     }
 }
