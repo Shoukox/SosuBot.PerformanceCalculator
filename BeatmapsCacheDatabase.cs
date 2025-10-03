@@ -37,8 +37,8 @@ internal sealed class BeatmapsCacheDatabase
 
     private bool IsBeatmapCached(int beatmapId)
     {
-        string filePath = GetCachedBeatmapPath(beatmapId);
-        return File.Exists(filePath) && 
+        var filePath = GetCachedBeatmapPath(beatmapId);
+        return File.Exists(filePath) &&
                !string.IsNullOrEmpty(File.ReadAllText(filePath).Trim());
     }
 
