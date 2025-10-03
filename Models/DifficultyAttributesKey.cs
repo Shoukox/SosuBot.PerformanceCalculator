@@ -8,12 +8,12 @@ public record DifficultyAttributesKey(int BeatmapId, int? HitObjects, Mod[] Mods
     public virtual bool Equals(DifficultyAttributesKey? other)
     {
         if (other == null) return false;
-        
-        var a = BeatmapId == other.BeatmapId 
+
+        var a = BeatmapId == other.BeatmapId
                 && HitObjects == other.HitObjects
                 && Mods.OrderBy(m => m.Acronym).SequenceEqual(other.Mods.OrderBy(m => m.Acronym));
-        
-        return BeatmapId == other.BeatmapId 
+
+        return BeatmapId == other.BeatmapId
                && HitObjects == other.HitObjects
                && Mods.OrderBy(m => m.Acronym).SequenceEqual(other.Mods.OrderBy(m => m.Acronym));
     }
@@ -24,15 +24,9 @@ public record DifficultyAttributesKey(int BeatmapId, int? HitObjects, Mod[] Mods
         hash.Add(BeatmapId);
         hash.Add(HitObjects);
 
-        foreach (var mod in Mods)
-        {
-            hash.Add(mod.Acronym);
-        }
+        foreach (var mod in Mods) hash.Add(mod.Acronym);
 
-        foreach (var setting in Mods.GetOrderedSettingsSourceProperties())
-        {
-            hash.Add(setting);
-        }
+        foreach (var setting in Mods.GetOrderedSettingsSourceProperties()) hash.Add(setting);
 
         return hash.ToHashCode();
     }

@@ -2,6 +2,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.IO;
@@ -45,21 +46,19 @@ public class PPCalculator
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, IBeatmap> CachedBeatmaps = new();
 
     private static readonly BeatmapsCacheDatabase BeatmapsCacheDatabase = new();
-    
+
     /// <summary>
-    /// Logger
-    /// </summary>
-    public ILogger Logger { get; set; } 
-    
-    /// <summary>
-    /// Whether to cache the values
+    ///     Whether to cache the values
     /// </summary>
     private readonly bool _cache = true;
 
     /// <summary>
-    /// Creates an instance of <see cref="PPCalculator"/>
+    ///     Creates an instance of <see cref="PPCalculator" />
     /// </summary>
-    /// <param name="logger">Used logger. If not provided, a default instance from <see cref="LoggerFactory"/> with console logging and logging_level=debug will be used</param>
+    /// <param name="logger">
+    ///     Used logger. If not provided, a default instance from <see cref="LoggerFactory" /> with console
+    ///     logging and logging_level=debug will be used
+    /// </param>
     public PPCalculator(ILogger? logger = null)
     {
         // Setup default logger if needed
@@ -78,6 +77,11 @@ public class PPCalculator
         }
     }
 
+    /// <summary>
+    ///     Logger
+    /// </summary>
+    public ILogger Logger { get; set; }
+
     public DifficultyAttributes? LastDifficultyAttributes { get; private set; }
 
     /// <summary>
@@ -89,8 +93,8 @@ public class PPCalculator
     /// <param name="scoreMaxCombo">Score max combo. If null, then beatmap's maximum combo will be used</param>
     /// <param name="scoreMods">Score mods. If null, the no mods will be used (equals to lazer nomod score)</param>
     /// <param name="scoreStatistics">
-    /// Score statistics. 
-    /// If null, then the calculation will be for a FC with given accuracy
+    ///     Score statistics.
+    ///     If null, then the calculation will be for a FC with given accuracy
     /// </param>
     /// <param name="rulesetId">
     ///     The play mode for pp calculation.
@@ -141,24 +145,19 @@ public class PPCalculator
 
             // impossible case. scoreStatistics null means fc, but a fc can't be not passed.
             if (scoreStatistics == null && !passed)
-            {
                 throw new Exception("Impossible case: scoreStatistics = null and passed = false");
-            }
 
             // if scoreStatistics is null, then it's full combo
             // scoreStatistics not null and not passed mean the scoreStatistics contains not all hitobjects of the map
             // hitObjects is not null only if the score was not passed
-            if (scoreStatistics != null && !passed)
-            {
-                hitObjects = GetHitObjectsCountForGivenStatistics(scoreStatistics);
-            }
+            if (scoreStatistics != null && !passed) hitObjects = GetHitObjectsCountForGivenStatistics(scoreStatistics);
 
             DifficultyAttributesKey key = new(beatmapId, hitObjects, scoreMods.OrderBy(m => m.Acronym).ToArray());
 
-            int hashCode = GetHashCode(); 
+            var hashCode = GetHashCode();
             Logger.LogInformation($"[{hashCode}] bool cache = {_cache}");
             Logger.LogInformation(
-                $"[{hashCode}] Current key: {key.BeatmapId} {key.HitObjects} {Newtonsoft.Json.JsonConvert.SerializeObject(key.Mods)}");
+                $"[{hashCode}] Current key: {key.BeatmapId} {key.HitObjects} {JsonConvert.SerializeObject(key.Mods)}");
 
             if (!CachedWorkingBeatmaps.TryGetValue(key, out var workingBeatmap))
             {
@@ -174,7 +173,8 @@ public class PPCalculator
 
             if (!CachedBeatmaps.TryGetValue(key, out var playableBeatmap))
             {
-                playableBeatmap = workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken!.Value);
+                playableBeatmap =
+                    workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken!.Value);
                 Logger.LogInformation($"[{hashCode}] Parsed a working beatmap => playable beatmap");
 
                 if (_cache && !scoreMods.Any(m => m is ModRandom))
@@ -187,15 +187,15 @@ public class PPCalculator
             // Get score info
             if (scoreStatistics is null) // If FC, calculate only for acc
             {
-                int beatmapSliderTails = playableBeatmap.HitObjects.Count(x => x is Slider);
+                var beatmapSliderTails = playableBeatmap.HitObjects.Count(x => x is Slider);
                 scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy!.Value,
-                    misses: 0,
-                    largeTickMisses: 0,
-                    sliderTailHits: beatmapSliderTails
+                    0,
+                    0,
+                    beatmapSliderTails
                 );
             }
 
-            double scoreStatisticsAccuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
+            var scoreStatisticsAccuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
 
             scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
 
@@ -204,7 +204,7 @@ public class PPCalculator
                 Accuracy = scoreStatisticsAccuracy,
                 Mods = scoreMods,
                 MaxCombo = scoreMaxCombo.Value,
-                Statistics = scoreStatistics,
+                Statistics = scoreStatistics
             };
 
             // Calculate pp
@@ -213,7 +213,7 @@ public class PPCalculator
             {
                 difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken!.Value);
                 Logger.LogInformation($"[{hashCode}] Calculated difficulty attributes");
-                
+
                 if (_cache && !scoreMods.Any(m => m is ModRandom))
                 {
                     CachedDifficultyAttrbiutes[key] = difficultyAttributes;
@@ -223,10 +223,11 @@ public class PPCalculator
 
             LastDifficultyAttributes = difficultyAttributes;
             var ppCalculator = ruleset.CreatePerformanceCalculator()!;
-            var ppAttributes = await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes, cancellationToken!.Value);
+            var ppAttributes =
+                await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes, cancellationToken!.Value);
 
             Logger.LogInformation($"[{hashCode}] Calculated total pp: {ppAttributes.Total}");
-            
+
             return new PPCalculationResult
             {
                 Pp = ppAttributes.Total,
