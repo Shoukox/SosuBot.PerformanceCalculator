@@ -24,24 +24,24 @@ using SosuBot.PerformanceCalculator.Models;
 namespace SosuBot.PerformanceCalculator;
 
 /// <summary>
-///     One instance for the same beatmap with same mods in order to use the calculated data of it.
+///     One instance for the same beatmap with same mods for pp calculation.
 /// </summary>
 // ReSharper disable once InconsistentNaming
 public class PPCalculator
 {
     /// <summary>
-    ///     hitObjects is null, if it's the whole beatmap
+    /// todo
     /// </summary>
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, DifficultyAttributes>
         CachedDifficultyAttrbiutes = new();
 
     /// <summary>
-    ///     hitObjects is null, if it's the whole beatmap
+    /// todo
     /// </summary>
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, WorkingBeatmap> CachedWorkingBeatmaps = new();
 
     /// <summary>
-    ///     hitObjects is null, if it's the whole beatmap
+    /// todo
     /// </summary>
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, IBeatmap> CachedBeatmaps = new();
 
