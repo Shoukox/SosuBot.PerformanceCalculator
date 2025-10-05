@@ -9,10 +9,6 @@ public record DifficultyAttributesKey(int BeatmapId, int? HitObjects, Mod[] Mods
     {
         if (other == null) return false;
 
-        var a = BeatmapId == other.BeatmapId
-                && HitObjects == other.HitObjects
-                && Mods.OrderBy(m => m.Acronym).SequenceEqual(other.Mods.OrderBy(m => m.Acronym));
-
         return BeatmapId == other.BeatmapId
                && HitObjects == other.HitObjects
                && Mods.OrderBy(m => m.Acronym).SequenceEqual(other.Mods.OrderBy(m => m.Acronym));
