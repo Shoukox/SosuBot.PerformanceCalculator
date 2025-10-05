@@ -100,11 +100,11 @@ public static class AccuracyTools
                     countMeh = (int?)Math.Round(count50Estimate);
 
                     // Fill the rest results with misses overwriting initial countMiss
-                    countMiss = (int)(totalResultCount - countMeh);
+                    countMiss = (int)(totalResultCount - countMeh)!;
                 }
 
                 // Rest of the hits are 300s
-                countGreat = (int)(totalResultCount - countGood - countMeh - countMiss);
+                countGreat = (int)(totalResultCount - countGood - countMeh - countMiss)!;
             }
 
             var result = new Dictionary<HitResult, int>
@@ -176,7 +176,7 @@ public static class AccuracyTools
 
             if (countGood != null)
             {
-                countGreat = (int)(totalResultCount - countGood - countMiss);
+                countGreat = (int)(totalResultCount - countGood - countMiss)!;
             }
             else
             {

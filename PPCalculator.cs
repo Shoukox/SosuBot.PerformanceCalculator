@@ -30,18 +30,18 @@ namespace SosuBot.PerformanceCalculator;
 public class PPCalculator
 {
     /// <summary>
-    /// todo
+    ///     todo
     /// </summary>
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, DifficultyAttributes>
         CachedDifficultyAttrbiutes = new();
 
     /// <summary>
-    /// todo
+    ///     todo
     /// </summary>
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, WorkingBeatmap> CachedWorkingBeatmaps = new();
 
     /// <summary>
-    /// todo
+    ///     todo
     /// </summary>
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, IBeatmap> CachedBeatmaps = new();
 
@@ -174,7 +174,7 @@ public class PPCalculator
             if (!CachedBeatmaps.TryGetValue(key, out var playableBeatmap))
             {
                 playableBeatmap =
-                    workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken!.Value);
+                    workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken.Value);
                 Logger.LogInformation($"[{hashCode}] Parsed a working beatmap => playable beatmap");
 
                 if (_cache && !scoreMods.Any(m => m is ModRandom))
@@ -211,7 +211,7 @@ public class PPCalculator
             var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
             if (!CachedDifficultyAttrbiutes.TryGetValue(key, out var difficultyAttributes))
             {
-                difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken!.Value);
+                difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken.Value);
                 Logger.LogInformation($"[{hashCode}] Calculated difficulty attributes");
 
                 if (_cache && !scoreMods.Any(m => m is ModRandom))
@@ -224,7 +224,7 @@ public class PPCalculator
             LastDifficultyAttributes = difficultyAttributes;
             var ppCalculator = ruleset.CreatePerformanceCalculator()!;
             var ppAttributes =
-                await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes, cancellationToken!.Value);
+                await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes, cancellationToken.Value);
 
             Logger.LogInformation($"[{hashCode}] Calculated total pp: {ppAttributes.Total}");
 

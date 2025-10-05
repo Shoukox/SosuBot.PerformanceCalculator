@@ -1,4 +1,5 @@
-﻿namespace SosuBot.PerformanceCalculator;
+﻿// ReSharper disable InconsistentNaming
+namespace SosuBot.PerformanceCalculator.Models;
 
 public record PPCalculationResult
 {

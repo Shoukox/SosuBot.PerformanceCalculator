@@ -4,12 +4,12 @@ namespace SosuBot.PerformanceCalculator;
 
 internal sealed class BeatmapsCacheDatabase
 {
-    private const string BEATMAP_DOWNLOAD_URL = "https://osu.ppy.sh/osu/";
-    private const int CACHING_DAYS = 7;
+    private const string BeatmapDownloadUrl = "https://osu.ppy.sh/osu/";
+    private const int CachingDays = 7;
     private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
 
     private readonly ConcurrentDictionary<int, SemaphoreSlim> _syncDict = new();
-    private readonly HttpClient httpClient = new();
+    private readonly HttpClient _httpClient = new();
 
     /// <summary>
     ///     Creates an instance of the class with a specified path to the cache directory.
@@ -45,7 +45,7 @@ internal sealed class BeatmapsCacheDatabase
     private bool IsBeatmapCacheExpired(int beatmapId)
     {
         var lastModified = File.GetLastWriteTime(GetCachedBeatmapPath(beatmapId));
-        return (DateTime.Now - lastModified).TotalDays > CACHING_DAYS;
+        return (DateTime.Now - lastModified).TotalDays > CachingDays;
     }
 
     public bool ShouldBeBeatmapCached(int beatmapId)
@@ -72,7 +72,7 @@ internal sealed class BeatmapsCacheDatabase
         var semaphoreSlim = _syncDict.GetOrAdd(beatmapId, new SemaphoreSlim(1, 1));
         await semaphoreSlim.WaitAsync();
 
-        var response = await httpClient.GetAsync($"{BEATMAP_DOWNLOAD_URL}{beatmapId}");
+        var response = await _httpClient.GetAsync($"{BeatmapDownloadUrl}{beatmapId}");
 
         if (!response.IsSuccessStatusCode)
             throw new Exception($"Failed to download beatmap {beatmapId}. Status code: {response.StatusCode}");
