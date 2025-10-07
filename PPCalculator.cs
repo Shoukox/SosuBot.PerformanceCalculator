@@ -45,7 +45,7 @@ public class PPCalculator
     /// </summary>
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, IBeatmap> CachedBeatmaps = new();
 
-    private static readonly BeatmapsCacheDatabase BeatmapsCacheDatabase = new();
+    private static readonly BeatmapsCacheDatabase BeatmapsCacheDatabase = new(CancellationToken.None);
 
     /// <summary>
     ///     Whether to cache the values
@@ -135,14 +135,26 @@ public class PPCalculator
             };
 
             // Download beatmap
-            byte[] beatmapBytes;
-            if (BeatmapsCacheDatabase.ShouldBeBeatmapCached(beatmapId))
-                beatmapBytes = await BeatmapsCacheDatabase.CacheBeatmap(beatmapId);
-            else
-                beatmapBytes = BeatmapsCacheDatabase.GetCachedBeatmapContentAsByteArray(beatmapId);
+            byte[] beatmapBytes = [];
+            for (int attempt = 1; attempt <= 3; attempt++)
+            {
+                try
+                {
+                    beatmapBytes = await BeatmapsCacheDatabase.CacheBeatmap(beatmapId);
+                    break;
+                }
+                catch (Exception e)
+                {
+                    await Task.Delay(1000);
+                }
+            }
+
+            if (beatmapBytes.Length <= 30)
+            {
+                throw new TimeoutException("Failed to cache a beatmap");
+            }
 
             int? hitObjects = null;
-
             // impossible case. scoreStatistics null means fc, but a fc can't be not passed.
             if (scoreStatistics == null && !passed)
                 throw new Exception("Impossible case: scoreStatistics = null and passed = false");
