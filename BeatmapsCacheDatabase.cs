@@ -6,10 +6,9 @@ internal sealed class BeatmapsCacheDatabase
 {
     private const string BeatmapDownloadUrl = "https://osu.ppy.sh/osu/";
     private const int CachingDays = 7;
-    private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
 
     private readonly ConcurrentDictionary<int, SemaphoreSlim> _syncDict = new();
-    private readonly HttpClient _httpClient = new(){ Timeout = TimeSpan.FromSeconds(10) };
+    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
 
     private readonly CancellationToken _cts;
 
@@ -23,24 +22,14 @@ internal sealed class BeatmapsCacheDatabase
     {
         CacheDirectory = cacheDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "cache", "beatmaps");
         _cts = cts;
+        CreateCacheDirectory();
     }
 
-    public string CacheDirectory { get; }
+    private string CacheDirectory { get; }
 
-    public void CreateCacheDirectoryIfNeeded()
+    private void CreateCacheDirectory()
     {
-        _semaphoreSlim.Wait(_cts);
-        try
-        {
-            if (!Directory.Exists(CacheDirectory))
-            {
-                Directory.CreateDirectory(CacheDirectory);
-            }
-        }
-        finally
-        {
-            _semaphoreSlim.Release();
-        }
+        Directory.CreateDirectory(CacheDirectory);
     }
 
     private string GetCachedBeatmapPath(int beatmapId)
@@ -51,9 +40,9 @@ internal sealed class BeatmapsCacheDatabase
     private bool IsBeatmapCached(int beatmapId)
     {
         var filePath = GetCachedBeatmapPath(beatmapId);
-        var fileInfo = new FileInfo(filePath);
-        return File.Exists(filePath) &&
-               fileInfo.Length > 30;
+        if (!File.Exists(filePath)) return false;
+        
+        return new FileInfo(filePath).Length > 30;
     }
 
     private bool IsBeatmapCacheExpired(int beatmapId)
@@ -62,12 +51,7 @@ internal sealed class BeatmapsCacheDatabase
         return (DateTime.Now - lastModified).TotalDays > CachingDays;
     }
 
-    public bool ShouldBeBeatmapCached(int beatmapId)
-    {
-        return !IsBeatmapCached(beatmapId) || IsBeatmapCacheExpired(beatmapId);
-    }
-
-    public byte[] GetCachedBeatmapContentAsByteArray(int beatmapId)
+    private byte[] GetCachedBeatmapContentAsByteArray(int beatmapId)
     {
         if (!IsBeatmapCached(beatmapId)) throw new FileNotFoundException();
 
@@ -81,7 +65,7 @@ internal sealed class BeatmapsCacheDatabase
     /// <returns></returns>
     public async Task<byte[]> CacheBeatmap(int beatmapId)
     {
-        CreateCacheDirectoryIfNeeded();
+        CreateCacheDirectory();
 
         var semaphoreSlim = _syncDict.GetOrAdd(beatmapId, new SemaphoreSlim(1, 1));
         await semaphoreSlim.WaitAsync(_cts);
@@ -101,8 +85,9 @@ internal sealed class BeatmapsCacheDatabase
 
             var contentAsByteArray = await response.Content.ReadAsByteArrayAsync(_cts);
             if (contentAsByteArray == null || contentAsByteArray.Length <= 30)
-                throw new Exception($"Downloaded beatmap {beatmapId} is empty or too small (size: {contentAsByteArray?.Length ?? 0} bytes)");
-            
+                throw new Exception(
+                    $"Downloaded beatmap {beatmapId} is empty or too small (size: {contentAsByteArray?.Length ?? 0} bytes)");
+
             await File.WriteAllBytesAsync(GetCachedBeatmapPath(beatmapId), contentAsByteArray, _cts);
             return contentAsByteArray;
         }
