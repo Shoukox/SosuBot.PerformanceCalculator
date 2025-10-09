@@ -145,6 +145,7 @@ public class PPCalculator
                 }
                 catch (Exception e)
                 {
+                    Logger.LogError(e, "Error from loop in ppCalc");
                     await Task.Delay(1000);
                 }
             }
