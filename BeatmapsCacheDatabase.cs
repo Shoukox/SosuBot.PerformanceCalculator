@@ -1,4 +1,6 @@
 ﻿using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Configuration;
 
 namespace SosuBot.PerformanceCalculator;
 
@@ -11,6 +13,7 @@ internal sealed class BeatmapsCacheDatabase
     private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
 
     private readonly CancellationToken _cts;
+    private readonly ILogger _logger;
 
     /// <summary>
     ///     Creates an instance of the class with a specified path to the cache directory.
@@ -18,10 +21,11 @@ internal sealed class BeatmapsCacheDatabase
     /// </summary>
     /// <param name="cts">Cancellation token</param>
     /// <param name="cacheDirectory">If null, it uses the default directory (/cache) </param>
-    public BeatmapsCacheDatabase(CancellationToken cts, string? cacheDirectory = null)
+    public BeatmapsCacheDatabase(CancellationToken cts, ILogger logger, string? cacheDirectory = null)
     {
         CacheDirectory = cacheDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "cache", "beatmaps");
         _cts = cts;
+        _logger = logger;
         CreateCacheDirectory();
     }
 
@@ -84,7 +88,9 @@ internal sealed class BeatmapsCacheDatabase
                 throw new Exception($"Failed to download beatmap {beatmapId}. Status code: {response.StatusCode}");
 
             var contentAsByteArray = await response.Content.ReadAsByteArrayAsync(_cts);
-            if (contentAsByteArray == null || contentAsByteArray.Length <= 30)
+            
+            
+            if (contentAsByteArray is not { Length: > 30 })
                 throw new Exception(
                     $"Downloaded beatmap {beatmapId} is empty or too small (size: {contentAsByteArray?.Length ?? 0} bytes)");
 
