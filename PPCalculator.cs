@@ -1,8 +1,10 @@
 ﻿using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using OpenTabletDriver.Plugin;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
 using osu.Game.IO;
@@ -18,6 +20,7 @@ using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Scoring;
 using SosuBot.PerformanceCalculator.Models;
+using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 #pragma warning disable CS0618 // Type or member is obsolete
 
@@ -45,7 +48,7 @@ public class PPCalculator
     /// </summary>
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, IBeatmap> CachedBeatmaps = new();
 
-    private static readonly BeatmapsCacheDatabase BeatmapsCacheDatabase = new(CancellationToken.None);
+    private readonly BeatmapsCacheDatabase _beatmapsCacheDatabase;
 
     /// <summary>
     ///     Whether to cache the values
@@ -59,7 +62,7 @@ public class PPCalculator
     ///     Used logger. If not provided, a default instance from <see cref="LoggerFactory" /> with console
     ///     logging and logging_level=debug will be used
     /// </param>
-    public PPCalculator(ILogger? logger = null)
+    public PPCalculator(ILogger<PPCalculator>? logger = null)
     {
         // Setup default logger if needed
         if (logger == null)
@@ -69,18 +72,20 @@ public class PPCalculator
                 builder.AddSimpleConsole(options => options.SingleLine = true);
                 builder.SetMinimumLevel(LogLevel.Debug);
             });
-            Logger = loggerFactory.CreateLogger(nameof(PPCalculator));
+            Logger = loggerFactory.CreateLogger<PPCalculator>();
         }
         else
         {
             Logger = logger;
         }
+
+        _beatmapsCacheDatabase = new(CancellationToken.None, Logger);
     }
 
     /// <summary>
     ///     Logger
     /// </summary>
-    public ILogger Logger { get; set; }
+    public ILogger<PPCalculator> Logger { get; set; }
 
     public DifficultyAttributes? LastDifficultyAttributes { get; private set; }
 
@@ -140,7 +145,19 @@ public class PPCalculator
             {
                 try
                 {
-                    beatmapBytes = await BeatmapsCacheDatabase.CacheBeatmap(beatmapId);
+                    beatmapBytes = await _beatmapsCacheDatabase.CacheBeatmap(beatmapId);
+                    if (beatmapBytes.Length <= 30)
+                    {
+                        Logger.LogWarning($"[Retry] Beatmap bytes length: {beatmapBytes.Length}");
+                        if (beatmapBytes.Length != 0)
+                        {
+                            Logger.LogWarning($"[Retry] Beatmap bytes content as string: {Encoding.Default.GetString(beatmapBytes)}");
+                        }
+                        Logger.LogWarning($"[Retry] Retrying the {attempt} time to cache a beatmap...");
+                        await Task.Delay(3000);
+                        beatmapBytes = await _beatmapsCacheDatabase.CacheBeatmap(beatmapId);
+                    }
+
                     break;
                 }
                 catch (Exception e)
@@ -152,8 +169,15 @@ public class PPCalculator
 
             if (beatmapBytes.Length <= 30)
             {
+                Logger.LogWarning($"Beatmap bytes length: {beatmapBytes.Length}");
+                if (beatmapBytes.Length != 0)
+                {
+                    Logger.LogWarning($"Beatmap bytes content as string: {Encoding.Default.GetString(beatmapBytes)}");
+                }
+
                 throw new TimeoutException("Failed to cache a beatmap");
             }
+            Logger.LogInformation($"Successfully cached a beatmap {beatmapId}");
 
             int? hitObjects = null;
             // impossible case. scoreStatistics null means fc, but a fc can't be not passed.
