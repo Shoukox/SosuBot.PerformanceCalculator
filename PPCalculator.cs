@@ -117,7 +117,6 @@ public class PPCalculator
         int? scoreMaxCombo = null,
         Mod[]? scoreMods = null,
         Dictionary<HitResult, int>? scoreStatistics = null,
-        int? greatsMania = null,
         int rulesetId = 0,
         CancellationToken? cancellationToken = null)
     {
@@ -229,8 +228,7 @@ public class PPCalculator
                 scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy!.Value,
                     0,
                     0,
-                    beatmapSliderTails, 
-                    greatsMania
+                    beatmapSliderTails
                 );
             }
 
@@ -242,7 +240,7 @@ public class PPCalculator
             {
                 Accuracy = scoreStatisticsAccuracy,
                 Mods = scoreMods,
-                MaxCombo = scoreMaxCombo.Value,
+                MaxCombo = 0,
                 Statistics = scoreStatistics
             };
 
