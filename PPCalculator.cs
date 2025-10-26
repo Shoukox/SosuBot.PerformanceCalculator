@@ -235,12 +235,11 @@ public class PPCalculator
             var scoreStatisticsAccuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
 
             scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
-
             var scoreInfo = new ScoreInfo(playableBeatmap.BeatmapInfo, ruleset.RulesetInfo)
             {
                 Accuracy = scoreStatisticsAccuracy,
                 Mods = scoreMods,
-                MaxCombo = 0,
+                MaxCombo = scoreMaxCombo.Value,
                 Statistics = scoreStatistics
             };
 
