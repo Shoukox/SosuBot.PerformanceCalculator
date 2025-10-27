@@ -47,9 +47,7 @@ public class PPCalculator
     ///     todo
     /// </summary>
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, IBeatmap> CachedBeatmaps = new();
-
-    private readonly BeatmapsCacheDatabase _beatmapsCacheDatabase;
-
+    
     /// <summary>
     ///     Whether to cache the values
     /// </summary>
@@ -78,8 +76,8 @@ public class PPCalculator
         {
             Logger = logger;
         }
-
-        _beatmapsCacheDatabase = new(CancellationToken.None, Logger);
+        
+        BeatmapTools.Initialize(Logger);
     }
 
     /// <summary>
@@ -140,33 +138,7 @@ public class PPCalculator
             };
 
             // Download beatmap
-            byte[] beatmapBytes = [];
-            for (int attempt = 1; attempt <= 3; attempt++)
-            {
-                try
-                {
-                    beatmapBytes = await _beatmapsCacheDatabase.CacheBeatmap(beatmapId);
-                    if (beatmapBytes.Length <= 30)
-                    {
-                        Logger.LogWarning($"[Retry] Beatmap bytes length: {beatmapBytes.Length}");
-                        if (beatmapBytes.Length != 0)
-                        {
-                            Logger.LogWarning($"[Retry] Beatmap bytes content as string: {Encoding.Default.GetString(beatmapBytes)}");
-                        }
-                        Logger.LogWarning($"[Retry] Retrying the {attempt} time to cache a beatmap...");
-                        await Task.Delay(3000);
-                        beatmapBytes = await _beatmapsCacheDatabase.CacheBeatmap(beatmapId);
-                    }
-
-                    break;
-                }
-                catch (Exception e)
-                {
-                    Logger.LogError(e, "Error from loop in ppCalc");
-                    await Task.Delay(1000);
-                }
-            }
-
+            byte[] beatmapBytes = await BeatmapTools.GetBeatmapBytes(beatmapId);
             if (beatmapBytes.Length <= 30)
             {
                 Logger.LogWarning($"Beatmap bytes length: {beatmapBytes.Length}");
@@ -177,7 +149,6 @@ public class PPCalculator
 
                 throw new TimeoutException("Failed to cache a beatmap");
             }
-            Logger.LogInformation($"Successfully cached a beatmap {beatmapId}");
 
             int? hitObjects = null;
             // impossible case. scoreStatistics null means fc, but a fc can't be not passed.
@@ -324,19 +295,7 @@ public class PPCalculator
     {
         try
         {
-            // Create a working beatmap from the file
-            using var stream = new MemoryStream(beatmapBytes);
-            using var streamReader = new LineBufferedReader(stream);
-
-            var versionText = Encoding.Default.GetString(beatmapBytes[..30]);
-            var version = int.Parse(Regex.Match(versionText, @"v(?<ver>\d+)").Groups["ver"].Value);
-
-            var decoder = new LegacyBeatmapDecoder(version);
-            var beatmap = decoder.Decode(streamReader);
-
-            if (hitObjectsLimit != null) beatmap.HitObjects = beatmap.HitObjects.Take(hitObjectsLimit.Value).ToList();
-
-            return new LoadedBeatmap(beatmap);
+            return BeatmapTools.ParseBeatmap(beatmapBytes, hitObjectsLimit);
         }
         catch (Exception ex)
         {

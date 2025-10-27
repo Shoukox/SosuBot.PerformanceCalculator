@@ -20,12 +20,27 @@ internal sealed class BeatmapsCacheDatabase
     ///     Then creates the cache directory if needed
     /// </summary>
     /// <param name="cts">Cancellation token</param>
+    /// <param name="logger">A logger to be used</param>
     /// <param name="cacheDirectory">If null, it uses the default directory (/cache) </param>
-    public BeatmapsCacheDatabase(CancellationToken cts, ILogger logger, string? cacheDirectory = null)
+    public BeatmapsCacheDatabase(CancellationToken cts, ILogger? logger = null, string? cacheDirectory = null)
     {
         CacheDirectory = cacheDirectory ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "cache", "beatmaps");
         _cts = cts;
-        _logger = logger;
+        
+        // Setup default logger if needed
+        if (logger == null)
+        {
+            using var loggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.AddSimpleConsole(options => options.SingleLine = true);
+                builder.SetMinimumLevel(LogLevel.Debug);
+            });
+            _logger = loggerFactory.CreateLogger(nameof(BeatmapsCacheDatabase));
+        }
+        else
+        {
+            _logger = logger;
+        }
         CreateCacheDirectory();
     }
 
