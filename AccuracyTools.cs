@@ -336,16 +336,16 @@ public static class AccuracyTools
             };
         }
 
-        public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods)
+        public static double GetAccuracy(Dictionary<HitResult, int> statistics, Mod[] mods)
         {
-            var countPerfect = statistics[HitResult.Perfect];
-            var countGreat = statistics[HitResult.Great];
-            var countGood = statistics[HitResult.Good];
-            var countOk = statistics[HitResult.Ok];
-            var countMeh = statistics[HitResult.Meh];
-            var countMiss = statistics[HitResult.Miss];
+            int countPerfect = statistics.GetValueOrDefault(HitResult.Perfect);
+            int countGreat = statistics.GetValueOrDefault(HitResult.Great);
+            int countGood = statistics.GetValueOrDefault(HitResult.Good);
+            int countOk = statistics.GetValueOrDefault(HitResult.Ok);
+            int countMeh = statistics.GetValueOrDefault(HitResult.Meh);
+            int countMiss = statistics.GetValueOrDefault(HitResult.Miss);
 
-            var perfectWeight = mods.Any(m => m is ModClassic) ? 300 : 305;
+            int perfectWeight = mods.Any(m => m is ModClassic) ? 300 : 305;
 
             double total = perfectWeight * countPerfect + 300 * countGreat + 200 * countGood +
                            100 * countOk + 50 * countMeh;
