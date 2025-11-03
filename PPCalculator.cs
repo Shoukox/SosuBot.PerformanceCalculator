@@ -1,13 +1,8 @@
 ﻿using System.Collections.Concurrent;
-using System.Runtime.CompilerServices;
 using System.Text;
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using OpenTabletDriver.Plugin;
 using osu.Game.Beatmaps;
-using osu.Game.Beatmaps.Formats;
-using osu.Game.IO;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
 using osu.Game.Rulesets.Difficulty;
@@ -47,7 +42,7 @@ public class PPCalculator
     ///     todo
     /// </summary>
     private static readonly ConcurrentDictionary<DifficultyAttributesKey, IBeatmap> CachedBeatmaps = new();
-    
+
     /// <summary>
     ///     Whether to cache the values
     /// </summary>
@@ -76,14 +71,14 @@ public class PPCalculator
         {
             Logger = logger;
         }
-        
+
         BeatmapTools.Initialize(Logger);
     }
 
     /// <summary>
     ///     Logger
     /// </summary>
-    public ILogger<PPCalculator> Logger { get; set; }
+    private ILogger<PPCalculator> Logger { get; set; }
 
     public DifficultyAttributes? LastDifficultyAttributes { get; private set; }
 
@@ -118,6 +113,7 @@ public class PPCalculator
         int rulesetId = 0,
         CancellationToken? cancellationToken = null)
     {
+        var hashCode = GetHashCode();
         try
         {
             if (cancellationToken == null)
@@ -150,7 +146,8 @@ public class PPCalculator
                 throw new TimeoutException("Failed to cache a beatmap");
             }
 
-            int? hitObjects = null;
+            int? hitObjectsLimit = null;
+            
             // impossible case. scoreStatistics null means fc, but a fc can't be not passed.
             if (scoreStatistics == null && !passed)
                 throw new Exception("Impossible case: scoreStatistics = null and passed = false");
@@ -158,18 +155,18 @@ public class PPCalculator
             // if scoreStatistics is null, then it's full combo
             // scoreStatistics not null and not passed mean the scoreStatistics contains not all hitobjects of the map
             // hitObjects is not null only if the score was not passed
-            if (scoreStatistics != null && !passed) hitObjects = GetHitObjectsCountForGivenStatistics(scoreStatistics);
+            if (scoreStatistics != null && !passed)
+                hitObjectsLimit = GetHitObjectsCountForGivenStatistics(scoreStatistics);
 
-            DifficultyAttributesKey key = new(beatmapId, hitObjects, scoreMods.OrderBy(m => m.Acronym).ToArray());
+            DifficultyAttributesKey key = new(beatmapId, hitObjectsLimit, scoreMods.OrderBy(m => m.Acronym).ToArray());
 
-            var hashCode = GetHashCode();
             Logger.LogInformation($"[{hashCode}] bool cache = {_cache}");
             Logger.LogInformation(
                 $"[{hashCode}] Current key: {key.BeatmapId} {key.HitObjects} {JsonConvert.SerializeObject(key.Mods)}");
 
             if (!CachedWorkingBeatmaps.TryGetValue(key, out var workingBeatmap))
             {
-                workingBeatmap = ParseBeatmap(beatmapBytes, hitObjects);
+                workingBeatmap = ParseBeatmap(beatmapBytes, hitObjectsLimit);
                 Logger.LogInformation($"[{hashCode}] Parsed beatmap");
 
                 if (_cache && !scoreMods.Any(m => m is OsuModRandom))
@@ -192,16 +189,32 @@ public class PPCalculator
                 }
             }
 
-            // Get score info
-            if (scoreStatistics is null) // If FC, calculate only for acc
+            var beatmapSliderTails = playableBeatmap.HitObjects.Count(x => x is Slider);
+            int? largeTickMisses = null, sliderTailHits = null, greatsMania = null, oksMania = null, goods = null, mehs = null;
+            if (scoreStatistics != null)
             {
-                var beatmapSliderTails = playableBeatmap.HitObjects.Count(x => x is Slider);
-                scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy!.Value,
-                    0,
-                    0,
-                    beatmapSliderTails
-                );
+                if (scoreStatistics.TryGetValue(HitResult.LargeTickMiss, out var largeTickMissesFromDict))
+                    largeTickMisses = largeTickMissesFromDict;
+                if (scoreStatistics.TryGetValue(HitResult.SliderTailHit, out var sliderTailHitsFromDict))
+                    sliderTailHits = sliderTailHitsFromDict;
+                if (scoreStatistics.TryGetValue(HitResult.Great, out var greatsManiaFromDict))
+                    greatsMania = greatsManiaFromDict;
+                if (scoreStatistics.TryGetValue(HitResult.Ok, out var oksManiaFromDict))
+                    oksMania = oksManiaFromDict;
+                if (scoreStatistics.TryGetValue(HitResult.Good, out var goodsFromDict))
+                    goods = goodsFromDict;
+                if (scoreStatistics.TryGetValue(HitResult.Meh, out var mehsFromDict))
+                    mehs = mehsFromDict;
             }
+            scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy!.Value,
+                scoreStatistics?.GetValueOrDefault(HitResult.Miss, 0) ?? 0,
+                largeTickMisses,
+                sliderTailHits ?? beatmapSliderTails,
+                greatsMania,
+                oksMania,
+                goods,
+                mehs
+            );
 
             var scoreStatisticsAccuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
 
@@ -243,9 +256,9 @@ public class PPCalculator
         }
         catch (Exception ex)
         {
-            Logger.LogInformation($"Error calculating PP: {ex.Message}");
+            Logger.LogInformation($"[{hashCode}] Error calculating PP: {ex.Message}");
             if (ex.InnerException != null)
-                Logger.LogInformation($"Inner exception: {ex.InnerException.Message}");
+                Logger.LogInformation($"[{hashCode}] Inner exception: {ex.InnerException.Message}");
             throw;
         }
     }
@@ -273,7 +286,7 @@ public class PPCalculator
             1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, goods),
             2 => AccuracyTools.Catch.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, mehs, goods),
             3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy, greatsMania, oksMania,
-                goods, mehs),
+                goods, mehs, misses),
             _ => throw new NotImplementedException()
         };
     }
@@ -286,7 +299,7 @@ public class PPCalculator
             0 => AccuracyTools.Osu.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
             1 => AccuracyTools.Taiko.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
             2 => AccuracyTools.Catch.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
-            3 => AccuracyTools.Mania.GetAccuracy(playableBeatmap, scoreStatistics, scoreMods),
+            3 => AccuracyTools.Mania.GetAccuracy(scoreStatistics, scoreMods),
             _ => throw new NotImplementedException()
         };
     }
