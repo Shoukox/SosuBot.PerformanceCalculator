@@ -190,17 +190,17 @@ public class PPCalculator
             }
 
             var beatmapSliderTails = playableBeatmap.HitObjects.Count(x => x is Slider);
-            int? largeTickMisses = null, sliderTailHits = null, greatsMania = null, oksMania = null, goods = null, mehs = null;
+            int? largeTickMisses = null, sliderTailHits = null, greats = null, oks = null, goods = null, mehs = null;
             if (scoreStatistics != null)
             {
                 if (scoreStatistics.TryGetValue(HitResult.LargeTickMiss, out var largeTickMissesFromDict))
                     largeTickMisses = largeTickMissesFromDict;
                 if (scoreStatistics.TryGetValue(HitResult.SliderTailHit, out var sliderTailHitsFromDict))
                     sliderTailHits = sliderTailHitsFromDict;
-                if (scoreStatistics.TryGetValue(HitResult.Great, out var greatsManiaFromDict))
-                    greatsMania = greatsManiaFromDict;
-                if (scoreStatistics.TryGetValue(HitResult.Ok, out var oksManiaFromDict))
-                    oksMania = oksManiaFromDict;
+                if (scoreStatistics.TryGetValue(HitResult.Great, out var greatsFromDict))
+                    greats = greatsFromDict;
+                if (scoreStatistics.TryGetValue(HitResult.Ok, out var oksFromDict))
+                    oks = oksFromDict;
                 if (scoreStatistics.TryGetValue(HitResult.Good, out var goodsFromDict))
                     goods = goodsFromDict;
                 if (scoreStatistics.TryGetValue(HitResult.Meh, out var mehsFromDict))
@@ -210,8 +210,8 @@ public class PPCalculator
                 scoreStatistics?.GetValueOrDefault(HitResult.Miss, 0) ?? 0,
                 largeTickMisses,
                 sliderTailHits ?? beatmapSliderTails,
-                greatsMania,
-                oksMania,
+                greats,
+                oks,
                 goods,
                 mehs
             );
@@ -276,16 +276,16 @@ public class PPCalculator
 
     private Dictionary<HitResult, int> CalculateScoreStatistics(int rulesetId, IBeatmap playableBeatmap,
         Mod[] scoreMods, double accuracy, int misses = 0, int? largeTickMisses = null, int? sliderTailHits = null,
-        int? greatsMania = null, int? oksMania = null,
+        int? greats = null, int? oks = null,
         int? goods = null, int? mehs = null)
     {
         return rulesetId switch
         {
-            0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy, goods, mehs, misses,
+            0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy, oks, mehs, misses,
                 largeTickMisses, sliderTailHits),
             1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, goods),
             2 => AccuracyTools.Catch.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, mehs, goods),
-            3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy, greatsMania, oksMania,
+            3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy, greats, oks,
                 goods, mehs, misses),
             _ => throw new NotImplementedException()
         };
