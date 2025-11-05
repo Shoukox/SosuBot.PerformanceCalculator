@@ -18,27 +18,27 @@ public static class AccuracyTools
         // methodparams as a single param class
         // create an abstract class for every ruleset class 
         public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
-            int? goods = null, int? mehs = null, int misses = 0, int? largeTickMisses = null,
+            int? ok = null, int? mehs = null, int misses = 0, int? largeTickMisses = null,
             int? sliderTailHits = null)
         {
             //// Use lazer info only if score has sliderhead accuracy
             //if (mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value))
             //    return generateHitResults(beatmap, accuracy, misses, mehs, goods, null, null);
 
-            return generateHitResults(beatmap, accuracy, misses, mehs, goods, largeTickMisses,
+            return generateHitResults(beatmap, accuracy, misses, mehs, ok, largeTickMisses,
                 sliderTailHits);
         }
 
         private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy,
-            int countMiss, int? countMeh, int? countGood, int? countLargeTickMisses, int? countSliderTailHits)
+            int countMiss, int? countMeh, int? countOk, int? countLargeTickMisses, int? countSliderTailHits)
         {
             int countGreat;
 
             var totalResultCount = beatmap.HitObjects.Count;
 
-            if (countMeh != null || countGood != null)
+            if (countMeh != null || countOk != null)
             {
-                countGreat = totalResultCount - (countGood ?? 0) - (countMeh ?? 0) - countMiss;
+                countGreat = totalResultCount - (countOk ?? 0) - (countMeh ?? 0) - countMiss;
             }
             else
             {
@@ -66,10 +66,10 @@ public static class AccuracyTools
                     var count50Estimate = count100Estimate * ratio50To100;
 
                     // Round it to get int number of 100s
-                    countGood = (int?)Math.Round(count100Estimate);
+                    countOk = (int?)Math.Round(count100Estimate);
 
                     // Get number of 50s as difference between total mistimed hits and count100
-                    countMeh = (int?)(Math.Round(count100Estimate + count50Estimate) - countGood);
+                    countMeh = (int?)(Math.Round(count100Estimate + count50Estimate) - countOk);
                 }
                 // If accuracy is between 16.67% and 25% - we assume that we have no 300s
                 else if (relevantAccuracy >= 1.0 / 6)
@@ -81,10 +81,10 @@ public static class AccuracyTools
                     var count50Estimate = relevantResultCount - count100Estimate;
 
                     // Round it to get int number of 100s
-                    countGood = (int?)Math.Round(count100Estimate);
+                    countOk = (int?)Math.Round(count100Estimate);
 
                     // Get number of 50s as difference between total mistimed hits and count100
-                    countMeh = (int?)(Math.Round(count100Estimate + count50Estimate) - countGood);
+                    countMeh = (int?)(Math.Round(count100Estimate + count50Estimate) - countOk);
                 }
                 // If accuracy is less than 16.67% - it means that we have only 50s or misses
                 // Assuming that we removed misses in the 1st place - that means that we need to add additional misses to achieve target accuracy
@@ -94,7 +94,7 @@ public static class AccuracyTools
                     var count50Estimate = 6 * relevantResultCount * relevantAccuracy;
 
                     // We have 0 100s, because we can't start adding 100s again after reaching "only 50s" point
-                    countGood = 0;
+                    countOk = 0;
 
                     // Round it to get int number of 50s
                     countMeh = (int?)Math.Round(count50Estimate);
@@ -104,13 +104,13 @@ public static class AccuracyTools
                 }
 
                 // Rest of the hits are 300s
-                countGreat = (int)(totalResultCount - countGood - countMeh - countMiss)!;
+                countGreat = (int)(totalResultCount - countOk - countMeh - countMiss)!;
             }
 
             var result = new Dictionary<HitResult, int>
             {
                 { HitResult.Great, countGreat },
-                { HitResult.Ok, countGood ?? 0 },
+                { HitResult.Ok, countOk ?? 0 },
                 { HitResult.Meh, countMeh ?? 0 },
                 { HitResult.Miss, countMiss }
             };
