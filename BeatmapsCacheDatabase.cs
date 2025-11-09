@@ -9,7 +9,7 @@ internal sealed class BeatmapsCacheDatabase
     private const int CachingDays = 7;
 
     private readonly ConcurrentDictionary<int, SemaphoreSlim> _syncDict = new();
-    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
+    private readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(20) };
 
     private readonly CancellationToken _cts;
     private readonly ILogger _logger;
