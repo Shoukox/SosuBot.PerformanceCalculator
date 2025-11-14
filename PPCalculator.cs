@@ -251,7 +251,8 @@ public class PPCalculator
             return new PPCalculationResult
             {
                 Pp = ppAttributes.Total,
-                CalculatedAccuracy = scoreStatisticsAccuracy
+                CalculatedAccuracy = scoreStatisticsAccuracy,
+                DifficultyAttributes = difficultyAttributes
             };
         }
         catch (Exception ex)
