@@ -156,7 +156,7 @@ public class PPCalculator
             // scoreStatistics not null and not passed mean the scoreStatistics contains not all hitobjects of the map
             // hitObjects is not null only if the score was not passed
             if (scoreStatistics != null && !passed)
-                hitObjectsLimit = GetHitObjectsCountForGivenStatistics(scoreStatistics);
+                hitObjectsLimit = GetHitResultsCountForGivenStatistics(scoreStatistics);
 
             DifficultyAttributesKey key = new(beatmapId, hitObjectsLimit, scoreMods.OrderBy(m => m.Acronym).ToArray());
 
@@ -218,7 +218,11 @@ public class PPCalculator
 
             var scoreStatisticsAccuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
 
-            scoreMaxCombo ??= playableBeatmap.GetMaxCombo();
+
+
+            int beatmapHitObjectsCount = playableBeatmap.HitObjects.Count;
+            int beatmapMaxCombo = playableBeatmap.GetMaxCombo();
+            scoreMaxCombo ??= beatmapMaxCombo;
             var scoreInfo = new ScoreInfo(playableBeatmap.BeatmapInfo, ruleset.RulesetInfo)
             {
                 Accuracy = scoreStatisticsAccuracy,
@@ -252,7 +256,10 @@ public class PPCalculator
             {
                 Pp = ppAttributes.Total,
                 CalculatedAccuracy = scoreStatisticsAccuracy,
-                DifficultyAttributes = difficultyAttributes
+                DifficultyAttributes = difficultyAttributes,
+                BeatmapMaxCombo = beatmapMaxCombo,
+                BeatmapHitObjectsCount = beatmapHitObjectsCount,
+                ScoreHitResultsCount = GetHitResultsCountForGivenStatistics(scoreStatistics)
             };
         }
         catch (Exception ex)
@@ -264,7 +271,7 @@ public class PPCalculator
         }
     }
 
-    private int GetHitObjectsCountForGivenStatistics(Dictionary<HitResult, int> statistics)
+    private int GetHitResultsCountForGivenStatistics(Dictionary<HitResult, int> statistics)
     {
         statistics.TryGetValue(HitResult.Miss, out var miss);
         statistics.TryGetValue(HitResult.Meh, out var meh);
