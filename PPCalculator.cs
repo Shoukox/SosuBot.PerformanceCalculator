@@ -217,9 +217,6 @@ public class PPCalculator
             );
 
             var scoreStatisticsAccuracy = CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
-
-
-
             int beatmapHitObjectsCount = playableBeatmap.HitObjects.Count;
             int beatmapMaxCombo = playableBeatmap.GetMaxCombo();
             scoreMaxCombo ??= beatmapMaxCombo;
