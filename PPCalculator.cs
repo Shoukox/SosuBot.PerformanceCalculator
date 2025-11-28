@@ -103,7 +103,7 @@ public class PPCalculator
     /// </param>
     /// <param name="cancellationToken">Cancellation token with cancellation support</param>
     /// <returns>Total pp</returns>
-    public async Task<PPCalculationResult> CalculatePpAsync(
+    public async Task<PPCalculationResult?> CalculatePpAsync(
         int beatmapId,
         double? accuracy = null,
         bool passed = true,
@@ -206,6 +206,11 @@ public class PPCalculator
                 if (scoreStatistics.TryGetValue(HitResult.Meh, out var mehsFromDict))
                     mehs = mehsFromDict;
             }
+            // taiko
+            if(rulesetId == 1)
+            {
+                accuracy = Math.Clamp(accuracy!.Value, 0.5, 1);
+            }
             scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy!.Value,
                 scoreStatistics?.GetValueOrDefault(HitResult.Miss, 0) ?? 0,
                 largeTickMisses,
@@ -264,7 +269,8 @@ public class PPCalculator
             Logger.LogInformation($"[{hashCode}] Error calculating PP: {ex.Message}");
             if (ex.InnerException != null)
                 Logger.LogInformation($"[{hashCode}] Inner exception: {ex.InnerException.Message}");
-            throw;
+
+            return null;
         }
     }
 
@@ -288,7 +294,7 @@ public class PPCalculator
         {
             0 => AccuracyTools.Osu.GenerateHitResults(playableBeatmap, scoreMods, accuracy, oks, mehs, misses,
                 largeTickMisses, sliderTailHits),
-            1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, goods),
+            1 => AccuracyTools.Taiko.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, oks),
             2 => AccuracyTools.Catch.GenerateHitResults(playableBeatmap, scoreMods, accuracy, misses, mehs, goods),
             3 => AccuracyTools.Mania.GenerateHitResults(playableBeatmap, scoreMods, accuracy, greats, oks,
                 goods, mehs, misses),
