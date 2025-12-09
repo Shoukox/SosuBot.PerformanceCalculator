@@ -175,7 +175,7 @@ public class PPCalculator
                     Logger.LogInformation($"[{hashCode}] Cache the parsed beatmap");
                 }
             }
-
+            
             if (!CachedBeatmaps.TryGetValue(key, out var playableBeatmap))
             {
                 playableBeatmap =
@@ -211,6 +211,8 @@ public class PPCalculator
             {
                 accuracy = Math.Clamp(accuracy!.Value, 0.5, 1);
             }
+
+            accuracy ??= CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
             scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy!.Value,
                 scoreStatistics?.GetValueOrDefault(HitResult.Miss, 0) ?? 0,
                 largeTickMisses,
