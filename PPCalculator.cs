@@ -212,7 +212,7 @@ public class PPCalculator
                 accuracy = Math.Clamp(accuracy!.Value, 0.5, 1);
             }
 
-            accuracy ??= CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics);
+            accuracy ??= CalculateAccuracy(rulesetId, playableBeatmap, scoreMods, scoreStatistics!);
             scoreStatistics = CalculateScoreStatistics(rulesetId, playableBeatmap, scoreMods, accuracy!.Value,
                 scoreStatistics?.GetValueOrDefault(HitResult.Miss, 0) ?? 0,
                 largeTickMisses,
