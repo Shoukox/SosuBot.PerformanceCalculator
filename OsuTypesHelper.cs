@@ -1,27 +1,10 @@
-using osu.Game.Rulesets.Catch.Mods;
-using osu.Game.Rulesets.Mania.Mods;
-using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Scoring;
-using osu.Game.Rulesets.Taiko.Mods;
 using OsuApi.V2.Models;
-using Mod = osu.Game.Rulesets.Mods.Mod;
 
 namespace SosuBot.PerformanceCalculator;
 
 public static class OsuTypesHelper
 {
-    public static Mod GetClassicMode(int playmode)
-    {
-        return playmode switch
-        {
-            0 => new OsuModClassic(),
-            1 => new TaikoModClassic(),
-            2 => new CatchModClassic(),
-            3 => new ManiaModClassic(),
-            _ => throw new NotImplementedException()
-        };
-    }
-
     public static Dictionary<HitResult, int> ToStatistics(this ScoreStatistics statistics)
     {
         var result = new Dictionary<HitResult, int>();

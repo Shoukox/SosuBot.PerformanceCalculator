@@ -1,86 +1,32 @@
-﻿using System.Collections.Concurrent;
-using System.Text;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using osu.Game.Beatmaps;
+﻿using osu.Game.Beatmaps;
+using osu.Game.Beatmaps.Formats;
+using osu.Game.IO;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
 using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mania;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
-using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Scoring;
-using SosuBot.PerformanceCalculator.Models;
-using LogLevel = Microsoft.Extensions.Logging.LogLevel;
-
-#pragma warning disable CS0618 // Type or member is obsolete
+using System.Collections.Concurrent;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SosuBot.PerformanceCalculator;
 
 /// <summary>
 ///     One instance for the same beatmap with same mods for pp calculation.
 /// </summary>
-// ReSharper disable once InconsistentNaming
 public class PPCalculator
 {
-    /// <summary>
-    ///     todo
-    /// </summary>
-    private static readonly ConcurrentDictionary<DifficultyAttributesKey, DifficultyAttributes>
-        CachedDifficultyAttrbiutes = new();
+    private static readonly ConcurrentDictionary<string, DifficultyAttributes> CachedDifficultyAttrbiutes = new();
 
-    /// <summary>
-    ///     todo
-    /// </summary>
-    private static readonly ConcurrentDictionary<DifficultyAttributesKey, WorkingBeatmap> CachedWorkingBeatmaps = new();
+    private static readonly ConcurrentDictionary<string, WorkingBeatmap> CachedWorkingBeatmaps = new();
 
-    /// <summary>
-    ///     todo
-    /// </summary>
-    private static readonly ConcurrentDictionary<DifficultyAttributesKey, IBeatmap> CachedBeatmaps = new();
-
-    /// <summary>
-    ///     Whether to cache the values
-    /// </summary>
-    private readonly bool _cache = true;
-
-    /// <summary>
-    ///     Creates an instance of <see cref="PPCalculator" />
-    /// </summary>
-    /// <param name="logger">
-    ///     Used logger. If not provided, a default instance from <see cref="LoggerFactory" /> with console
-    ///     logging and logging_level=debug will be used
-    /// </param>
-    public PPCalculator(ILogger<PPCalculator>? logger = null)
-    {
-        // Setup default logger if needed
-        if (logger == null)
-        {
-            using var loggerFactory = LoggerFactory.Create(builder =>
-            {
-                builder.AddSimpleConsole(options => options.SingleLine = true);
-                builder.SetMinimumLevel(LogLevel.Debug);
-            });
-            Logger = loggerFactory.CreateLogger<PPCalculator>();
-        }
-        else
-        {
-            Logger = logger;
-        }
-
-        BeatmapTools.Initialize(Logger);
-    }
-
-    /// <summary>
-    ///     Logger
-    /// </summary>
-    private ILogger<PPCalculator> Logger { get; set; }
-
-    public DifficultyAttributes? LastDifficultyAttributes { get; private set; }
+    private static readonly ConcurrentDictionary<string, IBeatmap> CachedBeatmaps = new();
 
     /// <summary>
     ///     Calculates pp for given ruleset
@@ -105,6 +51,7 @@ public class PPCalculator
     /// <returns>Total pp</returns>
     public async Task<PPCalculationResult?> CalculatePpAsync(
         int beatmapId,
+        Stream beatmapFile,
         double? accuracy = null,
         bool passed = true,
         int? scoreMaxCombo = null,
@@ -133,21 +80,8 @@ public class PPCalculator
                 _ => new OsuRuleset()
             };
 
-            // Download beatmap
-            byte[] beatmapBytes = await BeatmapTools.GetBeatmapBytes(beatmapId);
-            if (beatmapBytes.Length <= 30)
-            {
-                Logger.LogWarning($"Beatmap bytes length: {beatmapBytes.Length}");
-                if (beatmapBytes.Length != 0)
-                {
-                    Logger.LogWarning($"Beatmap bytes content as string: {Encoding.Default.GetString(beatmapBytes)}");
-                }
-
-                throw new TimeoutException("Failed to cache a beatmap");
-            }
-
             int? hitObjectsLimit = null;
-            
+
             // impossible case. scoreStatistics null means fc, but a fc can't be not passed.
             if (scoreStatistics == null && !passed)
                 throw new Exception("Impossible case: scoreStatistics = null and passed = false");
@@ -158,34 +92,32 @@ public class PPCalculator
             if (scoreStatistics != null && !passed)
                 hitObjectsLimit = GetHitResultsCountForGivenStatistics(scoreStatistics);
 
-            DifficultyAttributesKey key = new(beatmapId, hitObjectsLimit, scoreMods.OrderBy(m => m.Acronym).ToArray());
+            string modsAsString = string.Join("", scoreMods.OrderBy(m => m.Acronym).Select(m => m.Acronym));
+            string hitObjectsLimitFormatted = hitObjectsLimit.HasValue ? hitObjectsLimit.Value.ToString() : "null";
+            string cacheKey = $"{beatmapId}:{hitObjectsLimitFormatted}:{modsAsString}";
 
-            Logger.LogInformation($"[{hashCode}] bool cache = {_cache}");
-            Logger.LogInformation(
-                $"[{hashCode}] Current key: {key.BeatmapId} {key.HitObjects} {JsonConvert.SerializeObject(key.Mods)}");
-
-            if (!CachedWorkingBeatmaps.TryGetValue(key, out var workingBeatmap))
+            if (!CachedWorkingBeatmaps.TryGetValue(cacheKey, out var workingBeatmap))
             {
-                workingBeatmap = ParseBeatmap(beatmapBytes, hitObjectsLimit);
-                Logger.LogInformation($"[{hashCode}] Parsed beatmap");
+                workingBeatmap = ParseBeatmap(beatmapFile, hitObjectsLimit);
+                Log($"[{hashCode}] Parsed beatmap");
 
-                if (_cache && !scoreMods.Any(m => m is OsuModRandom))
+                if (!scoreMods.Any(m => m is IHasSeed))
                 {
-                    CachedWorkingBeatmaps[key] = workingBeatmap;
-                    Logger.LogInformation($"[{hashCode}] Cache the parsed beatmap");
+                    CachedWorkingBeatmaps[cacheKey] = workingBeatmap;
+                    Log($"[{hashCode}] Cache the parsed beatmap");
                 }
             }
-            
-            if (!CachedBeatmaps.TryGetValue(key, out var playableBeatmap))
+
+            if (!CachedBeatmaps.TryGetValue(cacheKey, out var playableBeatmap))
             {
                 playableBeatmap =
                     workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken.Value);
-                Logger.LogInformation($"[{hashCode}] Parsed a working beatmap => playable beatmap");
+                Log($"[{hashCode}] Parsed a working beatmap => playable beatmap");
 
-                if (_cache && !scoreMods.Any(m => m is ModRandom))
+                if (!scoreMods.Any(m => m is ModRandom))
                 {
-                    CachedBeatmaps[key] = playableBeatmap;
-                    Logger.LogInformation($"[{hashCode}] Cache the playable beatmap");
+                    CachedBeatmaps[cacheKey] = playableBeatmap;
+                    Log($"[{hashCode}] Cache the playable beatmap");
                 }
             }
 
@@ -206,8 +138,9 @@ public class PPCalculator
                 if (scoreStatistics.TryGetValue(HitResult.Meh, out var mehsFromDict))
                     mehs = mehsFromDict;
             }
+
             // taiko
-            if(rulesetId == 1)
+            if (rulesetId == 1)
             {
                 accuracy = Math.Clamp(accuracy!.Value, 0.5, 1);
             }
@@ -237,24 +170,23 @@ public class PPCalculator
 
             // Calculate pp
             var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
-            if (!CachedDifficultyAttrbiutes.TryGetValue(key, out var difficultyAttributes))
+            if (!CachedDifficultyAttrbiutes.TryGetValue(cacheKey, out var difficultyAttributes))
             {
                 difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken.Value);
-                Logger.LogInformation($"[{hashCode}] Calculated difficulty attributes");
+                Log($"[{hashCode}] Calculated difficulty attributes");
 
-                if (_cache && !scoreMods.Any(m => m is ModRandom))
+                if (!scoreMods.Any(m => m is ModRandom))
                 {
-                    CachedDifficultyAttrbiutes[key] = difficultyAttributes;
-                    Logger.LogInformation($"[{hashCode}] Cached the difficulty attributes");
+                    CachedDifficultyAttrbiutes[cacheKey] = difficultyAttributes;
+                    Log($"[{hashCode}] Cached the difficulty attributes");
                 }
             }
 
-            LastDifficultyAttributes = difficultyAttributes;
             var ppCalculator = ruleset.CreatePerformanceCalculator()!;
             var ppAttributes =
                 await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes, cancellationToken.Value);
 
-            Logger.LogInformation($"[{hashCode}] Calculated total pp: {ppAttributes.Total}");
+            Log($"[{hashCode}] Calculated total pp: {ppAttributes.Total}");
 
             return new PPCalculationResult
             {
@@ -268,9 +200,9 @@ public class PPCalculator
         }
         catch (Exception ex)
         {
-            Logger.LogInformation($"[{hashCode}] Error calculating PP: {ex.Message}");
+            Log($"[{hashCode}] Error calculating PP: {ex.Message}");
             if (ex.InnerException != null)
-                Logger.LogInformation($"[{hashCode}] Inner exception: {ex.InnerException.Message}");
+                Log($"[{hashCode}] Inner exception: {ex.InnerException.Message}");
 
             return null;
         }
@@ -317,16 +249,34 @@ public class PPCalculator
         };
     }
 
-    private WorkingBeatmap ParseBeatmap(byte[] beatmapBytes, int? hitObjectsLimit = null)
+    private WorkingBeatmap ParseBeatmap(Stream beatmapFile, int? hitObjectsLimit = null)
     {
         try
         {
-            return BeatmapTools.ParseBeatmap(beatmapBytes, hitObjectsLimit);
+            using var streamReader = new LineBufferedReader(beatmapFile);
+
+            byte[] buffer = new byte[30];
+            beatmapFile.ReadExactly(buffer, 0, buffer.Length);
+            beatmapFile.Position = 0;
+            var versionText = Encoding.Default.GetString(buffer);
+            var version = int.Parse(Regex.Match(versionText, @"v(?<ver>\d+)").Groups["ver"].Value);
+
+            var decoder = new LegacyBeatmapDecoder(version);
+            var beatmap = decoder.Decode(streamReader);
+
+            if (hitObjectsLimit != null) beatmap.HitObjects = beatmap.HitObjects.Take(hitObjectsLimit.Value).ToList();
+
+            return new LoadedBeatmap(beatmap);
         }
         catch (Exception ex)
         {
-            Logger.LogInformation($"Error parsing beatmap: {ex.Message}");
+            Log($"Error parsing beatmap: {ex.Message}");
             throw;
         }
+    }
+
+    private static void Log(string message)
+    {
+        Console.WriteLine($"\x1b[32m[{DateTime.Now:yyyy-MM-dd HH:mm:ss.ffff}][{nameof(PPCalculator)}] \x1b[37m{message}\x1b[0m");
     }
 }

@@ -1,7 +1,7 @@
 ﻿// ReSharper disable InconsistentNaming
 using osu.Game.Rulesets.Difficulty;
 
-namespace SosuBot.PerformanceCalculator.Models;
+namespace SosuBot.PerformanceCalculator;
 
 public record PPCalculationResult
 {
