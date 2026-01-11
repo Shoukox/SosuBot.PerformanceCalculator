@@ -253,15 +253,11 @@ public class PPCalculator
     {
         try
         {
-            Stream copy = new MemoryStream();
-            beatmapFile.CopyTo(copy);
+            using var streamReader = new LineBufferedReader(beatmapFile, true);
             beatmapFile.Position = 0;
-            copy.Position = 0;
-
-            using var streamReader = new LineBufferedReader(copy);
 
             byte[] buffer = new byte[30];
-            copy.ReadExactly(buffer, 0, buffer.Length);
+            beatmapFile.ReadExactly(buffer, 0, buffer.Length);
 
             var versionText = Encoding.Default.GetString(buffer);
             var version = int.Parse(Regex.Match(versionText, @"v(?<ver>\d+)").Groups["ver"].Value);
