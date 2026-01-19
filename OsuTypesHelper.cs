@@ -1,5 +1,5 @@
 using osu.Game.Rulesets.Scoring;
-using OsuApi.V2.Models;
+using OsuApi.BanchoV2.Models;
 
 namespace SosuBot.PerformanceCalculator;
 
