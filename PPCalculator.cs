@@ -1,5 +1,8 @@
-﻿using osu.Game.Beatmaps;
+﻿using osu.Framework.Extensions;
+using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
+using osu.Game.Configuration;
+using osu.Game.Extensions;
 using osu.Game.IO;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
@@ -12,6 +15,7 @@ using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Scoring;
 using System.Collections.Concurrent;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -92,9 +96,26 @@ public class PPCalculator
             if (scoreStatistics != null && !passed)
                 hitObjectsLimit = GetHitResultsCountForGivenStatistics(scoreStatistics);
 
-            string modsAsString = string.Join("", scoreMods.OrderBy(m => m.Acronym).Select(m => m.Acronym));
+            var orderedMods = scoreMods.OrderBy(m => m.Acronym);
+            var modsString = string.Join("", orderedMods.Select(m =>
+            {
+                var result = new StringBuilder(m.Acronym);
+
+                var settings = m.SettingDescription.ToList();
+                if (settings.Count != 0)
+                {
+                    result.Append("(");
+                    result.Append($"{settings[0].setting.ToString()}: {settings[0].value.ToString()}");
+                    for (int i = 1; i <= settings.Count - 1; i++)
+                    {
+                        result.Append($", {settings[i].setting.ToString()}: {settings[i].value.ToString()}");
+                    }
+                    result.Append(")");
+                }
+                return result.ToString();
+            }));
             string hitObjectsLimitFormatted = hitObjectsLimit.HasValue ? hitObjectsLimit.Value.ToString() : "null";
-            string cacheKey = $"{beatmapId}:{hitObjectsLimitFormatted}:{modsAsString}";
+            string cacheKey = $"{rulesetId}:{beatmapId}:{hitObjectsLimitFormatted}:{modsString}";
 
             if (!CachedWorkingBeatmaps.TryGetValue(cacheKey, out var workingBeatmap))
             {
