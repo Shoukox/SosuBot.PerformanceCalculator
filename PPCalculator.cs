@@ -15,7 +15,6 @@ using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Scoring;
 using System.Collections.Concurrent;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -141,6 +140,16 @@ public class PPCalculator
                     Log($"[{hashCode}] Cache the playable beatmap");
                 }
             }
+            double cs = playableBeatmap.Difficulty.CircleSize;
+            double hp = playableBeatmap.Difficulty.DrainRate;
+            double od = playableBeatmap.Difficulty.OverallDifficulty;
+            double ar = playableBeatmap.Difficulty.ApproachRate;
+
+            double speedChangeFactor = 1;
+            if (scoreMods.FirstOrDefault(m => m is ModRateAdjust) is ModRateAdjust rateChangingMod)
+            {
+                speedChangeFactor = rateChangingMod.SpeedChange.Value;
+            }
 
             var beatmapSliderTails = playableBeatmap.HitObjects.Count(x => x is Slider);
             int? largeTickMisses = null, sliderTailHits = null, greats = null, oks = null, goods = null, mehs = null;
@@ -211,12 +220,17 @@ public class PPCalculator
 
             return new PPCalculationResult
             {
-                Pp = ppAttributes.Total,
+                PP = ppAttributes.Total,
                 CalculatedAccuracy = scoreStatisticsAccuracy,
                 DifficultyAttributes = difficultyAttributes,
                 BeatmapMaxCombo = beatmapMaxCombo,
                 BeatmapHitObjectsCount = beatmapHitObjectsCount,
-                ScoreHitResultsCount = GetHitResultsCountForGivenStatistics(scoreStatistics)
+                ScoreHitResultsCount = GetHitResultsCountForGivenStatistics(scoreStatistics),
+                CS = cs,
+                HP = hp,
+                OD = od,
+                AR = ar,
+                SpeedChangeFactor = speedChangeFactor
             };
         }
         catch (Exception ex)
