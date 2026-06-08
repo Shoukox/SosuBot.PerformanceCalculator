@@ -95,7 +95,7 @@ public class PPCalculator
             if (scoreStatistics != null && !passed)
                 hitObjectsLimit = GetHitResultsCountForGivenStatistics(scoreStatistics);
 
-            var orderedMods = scoreMods.OrderBy(m => m.Acronym);
+            IOrderedEnumerable<Mod> orderedMods = scoreMods.OrderBy(m => m.Acronym);
             var modsString = string.Join("", orderedMods.Select(m =>
             {
                 var result = new StringBuilder(m.Acronym);
@@ -116,7 +116,7 @@ public class PPCalculator
             string hitObjectsLimitFormatted = hitObjectsLimit.HasValue ? hitObjectsLimit.Value.ToString() : "null";
             string cacheKey = $"{rulesetId}:{beatmapId}:{hitObjectsLimitFormatted}:{modsString}";
 
-            if (!CachedWorkingBeatmaps.TryGetValue(cacheKey, out var workingBeatmap))
+            if (!CachedWorkingBeatmaps.TryGetValue(cacheKey, out WorkingBeatmap? workingBeatmap))
             {
                 workingBeatmap = ParseBeatmap(beatmapFile, hitObjectsLimit);
                 Log($"[{hashCode}] Parsed beatmap");
@@ -128,7 +128,7 @@ public class PPCalculator
                 }
             }
 
-            if (!CachedBeatmaps.TryGetValue(cacheKey, out var playableBeatmap))
+            if (!CachedBeatmaps.TryGetValue(cacheKey, out IBeatmap? playableBeatmap))
             {
                 playableBeatmap =
                     workingBeatmap.GetPlayableBeatmap(ruleset.RulesetInfo, scoreMods, cancellationToken.Value);
@@ -199,8 +199,8 @@ public class PPCalculator
             };
 
             // Calculate pp
-            var difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
-            if (!CachedDifficultyAttrbiutes.TryGetValue(cacheKey, out var difficultyAttributes))
+            DifficultyCalculator difficultyCalculator = ruleset.CreateDifficultyCalculator(workingBeatmap);
+            if (!CachedDifficultyAttrbiutes.TryGetValue(cacheKey, out DifficultyAttributes? difficultyAttributes))
             {
                 difficultyAttributes = difficultyCalculator.Calculate(scoreMods, cancellationToken.Value);
                 Log($"[{hashCode}] Calculated difficulty attributes");
@@ -212,8 +212,8 @@ public class PPCalculator
                 }
             }
 
-            var ppCalculator = ruleset.CreatePerformanceCalculator()!;
-            var ppAttributes =
+            osu.Game.Rulesets.Difficulty.PerformanceCalculator ppCalculator = ruleset.CreatePerformanceCalculator()!;
+            PerformanceAttributes ppAttributes =
                 await ppCalculator.CalculateAsync(scoreInfo, difficultyAttributes, cancellationToken.Value);
 
             Log($"[{hashCode}] Calculated total pp: {ppAttributes.Total}");
@@ -298,7 +298,7 @@ public class PPCalculator
             var version = int.Parse(Regex.Match(versionText, @"v(?<ver>\d+)").Groups["ver"].Value);
 
             var decoder = new LegacyBeatmapDecoder(version);
-            var beatmap = decoder.Decode(streamReader);
+            Beatmap beatmap = decoder.Decode(streamReader);
 
             if (hitObjectsLimit != null) beatmap.HitObjects = beatmap.HitObjects.Take(hitObjectsLimit.Value).ToList();
 
