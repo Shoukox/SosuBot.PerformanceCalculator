@@ -1,0 +1,57 @@
+osu file format v14
+
+[General]
+AudioFilename: audio.mp3
+AudioLeadIn: 0
+PreviewTime: -1
+Countdown: 0
+SampleSet: Normal
+StackLeniency: 0.7
+Mode: 0
+LetterboxInBreaks: 0
+WidescreenStoryboard: 0
+
+[Metadata]
+Title: Native wrapper fixture
+Artist: SosuBot
+Creator: Test
+Version: Normal
+Source:
+Tags: rosu-pp native test
+BeatmapID: 1
+BeatmapSetID: 1
+
+[Difficulty]
+HPDrainRate: 5
+CircleSize: 4
+OverallDifficulty: 5
+ApproachRate: 5
+SliderMultiplier: 1.4
+SliderTickRate: 1
+
+[Events]
+
+[TimingPoints]
+0,400,4,1,0,100,1,0
+
+[HitObjects]
+64,192,0,1,0,0:0:0:0:
+192,192,400,1,0,0:0:0:0:
+256,192,800,2,0,L|384:192,200,1,0,0:0:0:0:
+448,192,1200,1,0,0:0:0:0:
+448,96,1600,1,0,0:0:0:0:
+320,96,2000,1,0,0:0:0:0:
+192,96,2400,1,0,0:0:0:0:
+64,96,2800,1,0,0:0:0:0:
+64,288,3200,1,0,0:0:0:0:
+192,288,3600,1,0,0:0:0:0:
+320,288,4000,1,0,0:0:0:0:
+448,288,4400,1,0,0:0:0:0:
+384,192,4800,1,0,0:0:0:0:
+256,192,5200,1,0,0:0:0:0:
+128,192,5600,1,0,0:0:0:0:
+256,96,6000,1,0,0:0:0:0:
+384,96,6400,1,0,0:0:0:0:
+384,288,6800,1,0,0:0:0:0:
+256,288,7200,1,0,0:0:0:0:
+128,288,7600,1,0,0:0:0:0:
