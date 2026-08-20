@@ -89,6 +89,7 @@ internal sealed class PPCalculationEngine
                 PP = performanceAttributes.Total,
                 CalculatedAccuracy = calculatedAccuracy,
                 DifficultyAttributes = difficultyAttributes,
+                PerformanceAttributes = performanceAttributes,
                 BeatmapMaxCombo = map.MaxCombo,
                 BeatmapHitObjectsCount = map.HitObjectsCount,
                 ScoreHitResultsCount = PPCalculationStatistics.GetHitResultsCount(scoreStatistics),
