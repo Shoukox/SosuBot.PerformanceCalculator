@@ -97,7 +97,8 @@ internal sealed class PPCalculationEngine
                 HP = map.DrainRate,
                 OD = map.OverallDifficulty,
                 AR = map.ApproachRate,
-                SpeedChangeFactor = map.SpeedChangeFactor
+                SpeedChangeFactor = map.SpeedChangeFactor,
+                ScoreStatistics = scoreStatistics
             };
         }
         catch

@@ -1,5 +1,6 @@
 ﻿// ReSharper disable InconsistentNaming
 using osu.Game.Rulesets.Difficulty;
+using osu.Game.Rulesets.Scoring;
 
 namespace SosuBot.PerformanceCalculator;
 
@@ -17,4 +18,5 @@ public record PPCalculationResult
     public required double OD { get; set; }
     public required double AR { get; set; }
     public required double SpeedChangeFactor { get; set; }
+    public Dictionary<HitResult, int> ScoreStatistics { get; init; } = [];
 }
