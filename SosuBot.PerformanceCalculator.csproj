@@ -16,7 +16,7 @@
               CopyToPublishDirectory="PreserveNewest"
               Pack="true"
               PackagePath="runtimes/%(RecursiveDir)%(Filename)%(Extension)" />
-        <None Update="Calculators/Rosu/native/rosu-pp-native/README.md"
+        <None Update="Calculators/Rosu/Native/rosu-pp-native/README.md"
               Pack="true"
               PackagePath="README.md" />
     </ItemGroup>
