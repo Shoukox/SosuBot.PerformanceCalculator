@@ -1,4 +1,3 @@
-using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
 
@@ -45,14 +44,14 @@ internal static class PPCalculationStatistics
 
     public static double ResolveAccuracy(
         int rulesetId,
-        IBeatmap playableBeatmap,
+        PPCalculationBeatmapCounts counts,
         Mod[] mods,
         double? requestedAccuracy,
         Dictionary<HitResult, int>? scoreStatistics)
     {
         double accuracy = requestedAccuracy ?? CalculateAccuracy(
             rulesetId,
-            playableBeatmap,
+            counts,
             mods,
             scoreStatistics ?? throw new ArgumentException("Score statistics are required."));
 
@@ -61,11 +60,10 @@ internal static class PPCalculationStatistics
 
     public static Dictionary<HitResult, int> Generate(
         int rulesetId,
-        IBeatmap playableBeatmap,
+        PPCalculationBeatmapCounts counts,
         Mod[] mods,
         double accuracy,
-        Dictionary<HitResult, int>? originalStatistics,
-        int sliderCount)
+        Dictionary<HitResult, int>? originalStatistics)
     {
         ProvidedHitStatistics provided = ReadProvided(originalStatistics);
         int misses = originalStatistics?.GetValueOrDefault(HitResult.Miss, 0) ?? 0;
@@ -73,29 +71,29 @@ internal static class PPCalculationStatistics
         return rulesetId switch
         {
             0 => AccuracyTools.Osu.GenerateHitResults(
-                playableBeatmap,
+                counts,
                 mods,
                 accuracy,
                 provided.Oks,
                 provided.Mehs,
                 misses,
                 provided.LargeTickMisses,
-                provided.SliderTailHits ?? sliderCount),
+                provided.SliderTailHits ?? counts.Sliders),
             1 => AccuracyTools.Taiko.GenerateHitResults(
-                playableBeatmap,
+                counts,
                 mods,
                 accuracy,
                 misses,
                 provided.Oks),
             2 => AccuracyTools.Catch.GenerateHitResults(
-                playableBeatmap,
+                counts,
                 mods,
                 accuracy,
                 misses,
                 provided.Mehs,
                 provided.Goods),
             3 => AccuracyTools.Mania.GenerateHitResults(
-                playableBeatmap,
+                counts,
                 mods,
                 accuracy,
                 provided.Greats,
@@ -109,15 +107,15 @@ internal static class PPCalculationStatistics
 
     public static double CalculateAccuracy(
         int rulesetId,
-        IBeatmap playableBeatmap,
+        PPCalculationBeatmapCounts counts,
         Mod[] mods,
         Dictionary<HitResult, int> statistics)
     {
         return rulesetId switch
         {
-            0 => AccuracyTools.Osu.GetAccuracy(playableBeatmap, statistics, mods),
-            1 => AccuracyTools.Taiko.GetAccuracy(playableBeatmap, statistics, mods),
-            2 => AccuracyTools.Catch.GetAccuracy(playableBeatmap, statistics, mods),
+            0 => AccuracyTools.Osu.GetAccuracy(counts, statistics, mods),
+            1 => AccuracyTools.Taiko.GetAccuracy(counts, statistics, mods),
+            2 => AccuracyTools.Catch.GetAccuracy(counts, statistics, mods),
             3 => AccuracyTools.Mania.GetAccuracy(statistics, mods),
             _ => throw new ArgumentOutOfRangeException(nameof(rulesetId), rulesetId, "Unsupported ruleset.")
         };

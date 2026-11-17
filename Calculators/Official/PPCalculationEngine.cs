@@ -1,5 +1,6 @@
-using osu.Game.Rulesets;
 using osu.Game.Beatmaps;
+using osu.Game.Database;
+using osu.Game.Rulesets;
 using osu.Game.Rulesets.Difficulty;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Scoring;
@@ -7,8 +8,10 @@ using osu.Game.Scoring;
 
 namespace SosuBot.PerformanceCalculator;
 
-internal sealed class PPCalculationEngine
+internal sealed class PPCalculationEngine(PPCalculationCache cache) : IDisposable
 {
+    internal PPCalculationCache Cache { get; } = cache ?? throw new ArgumentNullException(nameof(cache));
+
     public async Task<PPCalculationResult?> CalculateAsync(PPCalculationRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -28,70 +31,72 @@ internal sealed class PPCalculationEngine
 
             Mod[] mods = request.ScoreMods;
             Ruleset ruleset = PPCalculationRulesetFactory.Create(request.RulesetId);
-            int? hitObjectsLimit = PPCalculationStatistics.GetHitObjectsLimit(request);
-            string cacheKey = PPCalculationCacheKey.Create(
-                request.BeatmapId,
-                request.RulesetId,
-                hitObjectsLimit,
-                mods);
-            PPCalculationMap map = PPCalculationMapLoader.Load(
-                request,
-                ruleset,
-                mods,
-                hitObjectsLimit,
-                cacheKey,
-                cancellationToken);
+            int? hitObjectsLimit = request.IsSubmittedScore ? null : PPCalculationStatistics.GetHitObjectsLimit(request);
+            PPCalculationBeatmap map = GetBeatmap(request, ruleset, mods, hitObjectsLimit, cancellationToken);
 
-            double accuracy = PPCalculationStatistics.ResolveAccuracy(
-                request.RulesetId,
-                map.PlayableBeatmap,
-                mods,
-                request.Accuracy,
-                request.ScoreStatistics);
-            Dictionary<HitResult, int> scoreStatistics = PPCalculationStatistics.Generate(
-                request.RulesetId,
-                map.PlayableBeatmap,
-                mods,
-                accuracy,
-                request.ScoreStatistics,
-                map.SliderCount);
-            double calculatedAccuracy = PPCalculationStatistics.CalculateAccuracy(
-                request.RulesetId,
-                map.PlayableBeatmap,
-                mods,
-                scoreStatistics);
-            int scoreMaxCombo = request.ScoreMaxCombo ?? map.MaxCombo;
+            Dictionary<HitResult, int> scoreStatistics;
+            double calculatedAccuracy;
+            if (request.IsSubmittedScore)
+            {
+                // What osu-queue-score-statistics feeds the calculator: the stored statistics and the accuracy
+                // osu! derives from them.
+                scoreStatistics = new Dictionary<HitResult, int>(request.ScoreStatistics!);
+                calculatedAccuracy = StandardisedScoreMigrationTools.ComputeAccuracy(
+                    scoreStatistics,
+                    request.MaximumStatistics!,
+                    ruleset.CreateScoreProcessor());
+            }
+            else
+            {
+                double accuracy = PPCalculationStatistics.ResolveAccuracy(
+                    request.RulesetId,
+                    map.Counts,
+                    mods,
+                    request.Accuracy,
+                    request.ScoreStatistics);
+                scoreStatistics = PPCalculationStatistics.Generate(
+                    request.RulesetId,
+                    map.Counts,
+                    mods,
+                    accuracy,
+                    request.ScoreStatistics);
+                calculatedAccuracy = PPCalculationStatistics.CalculateAccuracy(
+                    request.RulesetId,
+                    map.Counts,
+                    mods,
+                    scoreStatistics);
+            }
 
-            var scoreInfo = new ScoreInfo(map.PlayableBeatmap.BeatmapInfo, ruleset.RulesetInfo)
+            int scoreMaxCombo = request.ScoreMaxCombo ?? map.Counts.MaxCombo;
+
+            var scoreInfo = new ScoreInfo(map.BeatmapInfo, ruleset.RulesetInfo)
             {
                 Accuracy = calculatedAccuracy,
                 Mods = mods,
                 MaxCombo = scoreMaxCombo,
-                Statistics = scoreStatistics
+                Statistics = scoreStatistics,
+                MaximumStatistics = request.MaximumStatistics is null
+                    ? []
+                    : new Dictionary<HitResult, int>(request.MaximumStatistics),
+                LegacyTotalScore = request.LegacyTotalScore
             };
 
-            DifficultyAttributes difficultyAttributes = GetDifficultyAttributes(
-                cacheKey,
-                map.WorkingBeatmap,
-                ruleset,
-                mods,
-                cancellationToken);
             osu.Game.Rulesets.Difficulty.PerformanceCalculator performanceCalculator =
                 ruleset.CreatePerformanceCalculator()
                 ?? throw new InvalidOperationException($"No performance calculator for ruleset {request.RulesetId}.");
             PerformanceAttributes performanceAttributes = await performanceCalculator.CalculateAsync(
                 scoreInfo,
-                difficultyAttributes,
+                map.DifficultyAttributes,
                 cancellationToken);
 
             return new PPCalculationResult
             {
                 PP = performanceAttributes.Total,
                 CalculatedAccuracy = calculatedAccuracy,
-                DifficultyAttributes = difficultyAttributes,
+                DifficultyAttributes = map.DifficultyAttributes,
                 PerformanceAttributes = performanceAttributes,
-                BeatmapMaxCombo = map.MaxCombo,
-                BeatmapHitObjectsCount = map.HitObjectsCount,
+                BeatmapMaxCombo = map.Counts.MaxCombo,
+                BeatmapHitObjectsCount = map.Counts.HitObjects,
                 ScoreHitResultsCount = PPCalculationStatistics.GetHitResultsCount(scoreStatistics),
                 CS = map.CircleSize,
                 HP = map.DrainRate,
@@ -107,23 +112,34 @@ internal sealed class PPCalculationEngine
         }
     }
 
-    private static DifficultyAttributes GetDifficultyAttributes(
-        string cacheKey,
-        WorkingBeatmap workingBeatmap,
+    public void Dispose() => Cache.Dispose();
+
+    private PPCalculationBeatmap GetBeatmap(
+        PPCalculationRequest request,
         Ruleset ruleset,
         Mod[] mods,
+        int? hitObjectsLimit,
         CancellationToken cancellationToken)
     {
-        bool cacheDifficulty = !mods.Any(mod => mod is ModRandom);
-        if (cacheDifficulty && PPCalculationCache.TryGetDifficultyAttributes(cacheKey, out DifficultyAttributes attributes))
-            return attributes;
+        // Randomising mods produce a different beatmap on every run unless they carry a seed.
+        bool cacheable = !mods.Any(mod => mod is ModRandom or IHasSeed);
+        string? key = cacheable
+            ? PPCalculationCacheKey.Create(
+                BeatmapFileParser.ComputeHash(request.BeatmapFile),
+                request.RulesetId,
+                hitObjectsLimit,
+                mods)
+            : null;
 
-        DifficultyAttributes calculated = ruleset
-            .CreateDifficultyCalculator(workingBeatmap)
-            .Calculate(mods, cancellationToken);
-        if (cacheDifficulty)
-            PPCalculationCache.SetDifficultyAttributes(cacheKey, calculated);
+        if (key is not null && Cache.TryGet(key, out PPCalculationBeatmap cached))
+            return cached;
 
-        return calculated;
+        Beatmap decoded = BeatmapFileParser.Decode(request.BeatmapFile, hitObjectsLimit);
+        PPCalculationBeatmap prepared = PPCalculationBeatmapLoader.Load(decoded, ruleset, mods, cancellationToken);
+
+        if (key is not null)
+            Cache.Set(key, prepared);
+
+        return prepared;
     }
 }

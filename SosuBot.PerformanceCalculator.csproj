@@ -32,6 +32,7 @@
     <ItemGroup>
 		<PackageReference Include="AutoMapper" Version="16.3.0" /> <!-- overrides vulnerable transitive 13.0.1 from ppy.osu.Game -->
 		<PackageReference Include="OsuApi.Core" Version="0.1.0" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.15" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
 		<PackageReference Include="ppy.osu.Game.Rulesets.Osu" Version="2026.1026.0" />
         <PackageReference Include="ppy.osu.Game.Rulesets.Mania" Version="2026.1026.0" />

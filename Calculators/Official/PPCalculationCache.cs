@@ -1,34 +1,63 @@
-using System.Collections.Concurrent;
-using osu.Game.Beatmaps;
-using osu.Game.Rulesets.Difficulty;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace SosuBot.PerformanceCalculator;
 
 /// <summary>
-/// Shared cache for expensive parse, conversion and difficulty phases.
-/// Random/seeded mods are deliberately excluded by the caller.
+/// Limits of the official calculator's in-memory cache.
 /// </summary>
-internal static class PPCalculationCache
+public sealed record PPCalculationCacheOptions
 {
-    private static readonly ConcurrentDictionary<string, WorkingBeatmap> WorkingBeatmaps = new();
-    private static readonly ConcurrentDictionary<string, IBeatmap> PlayableBeatmaps = new();
-    private static readonly ConcurrentDictionary<string, DifficultyAttributes> DifficultyAttributes = new();
+    public static PPCalculationCacheOptions Default { get; } = new();
 
-    public static bool TryGetWorkingBeatmap(string key, out WorkingBeatmap beatmap) =>
-        WorkingBeatmaps.TryGetValue(key, out beatmap!);
+    /// <summary>
+    /// Maximum number of cached (beatmap content, ruleset, mods, object limit) combinations. An entry holds only
+    /// difficulty attributes and object counts (about 1-2 KB), never the parsed beatmap, so the default stays
+    /// within a few tens of megabytes.
+    /// </summary>
+    public int MaxEntries { get; init; } = 10_000;
 
-    public static void SetWorkingBeatmap(string key, WorkingBeatmap beatmap) =>
-        WorkingBeatmaps[key] = beatmap;
+    /// <summary>
+    /// An entry that nobody asked for during this time is dropped even if the cache is not full.
+    /// </summary>
+    public TimeSpan SlidingExpiration { get; init; } = TimeSpan.FromHours(6);
+}
 
-    public static bool TryGetPlayableBeatmap(string key, out IBeatmap beatmap) =>
-        PlayableBeatmaps.TryGetValue(key, out beatmap!);
+/// <summary>
+/// Bounded cache of the expensive, mod-dependent part of a calculation (conversion and difficulty).
+/// Parsed and converted beatmaps are deliberately not cached: they weigh megabytes each and were the reason the
+/// previous unbounded cache filled the memory.
+/// </summary>
+internal sealed class PPCalculationCache : IDisposable
+{
+    private readonly MemoryCache _entries;
+    private readonly TimeSpan _slidingExpiration;
 
-    public static void SetPlayableBeatmap(string key, IBeatmap beatmap) =>
-        PlayableBeatmaps[key] = beatmap;
+    public PPCalculationCache(PPCalculationCacheOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(options.MaxEntries);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(options.SlidingExpiration, TimeSpan.Zero);
 
-    public static bool TryGetDifficultyAttributes(string key, out DifficultyAttributes attributes) =>
-        DifficultyAttributes.TryGetValue(key, out attributes!);
+        _slidingExpiration = options.SlidingExpiration;
+        _entries = new MemoryCache(new MemoryCacheOptions
+        {
+            // Every entry has size 1, so the limit is an entry count; least recently used entries go first.
+            SizeLimit = options.MaxEntries,
+            CompactionPercentage = 0.1
+        });
+    }
 
-    public static void SetDifficultyAttributes(string key, DifficultyAttributes attributes) =>
-        DifficultyAttributes[key] = attributes;
+    public int Count => _entries.Count;
+
+    public bool TryGet(string key, out PPCalculationBeatmap beatmap) =>
+        _entries.TryGetValue(key, out beatmap!);
+
+    public void Set(string key, PPCalculationBeatmap beatmap) =>
+        _entries.Set(key, beatmap, new MemoryCacheEntryOptions
+        {
+            Size = 1,
+            SlidingExpiration = _slidingExpiration
+        });
+
+    public void Dispose() => _entries.Dispose();
 }

@@ -10,8 +10,12 @@ namespace SosuBot.PerformanceCalculator;
 
 internal static class PPCalculationCacheKey
 {
+    /// <param name="beatmapHash">
+    /// Hash of the .osu file. Keying by content instead of beatmap id keeps results correct after a mapper
+    /// updates an unranked beatmap under the same id.
+    /// </param>
     public static string Create(
-        int beatmapId,
+        string beatmapHash,
         int rulesetId,
         int? hitObjectsLimit,
         IEnumerable<Mod> mods)
@@ -19,7 +23,7 @@ internal static class PPCalculationCacheKey
         StringBuilder key = new();
         key.Append(rulesetId.ToString(CultureInfo.InvariantCulture));
         key.Append(':');
-        key.Append(beatmapId.ToString(CultureInfo.InvariantCulture));
+        key.Append(beatmapHash);
         key.Append(':');
         key.Append(hitObjectsLimit?.ToString(CultureInfo.InvariantCulture) ?? "full");
         key.Append(':');

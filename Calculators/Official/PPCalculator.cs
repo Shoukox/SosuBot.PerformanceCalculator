@@ -5,12 +5,17 @@ namespace SosuBot.PerformanceCalculator;
 /// calculator. The calculation pipeline lives in <see cref="PPCalculationEngine"/>;
 /// this class keeps the API used by the bot and external callers.
 /// </summary>
-public class PPCalculator : IPerformanceCalculator
+public sealed class PPCalculator : IPerformanceCalculator, IDisposable
 {
     private readonly PPCalculationEngine _engine;
 
     public PPCalculator()
-        : this(new PPCalculationEngine())
+        : this(PPCalculationCacheOptions.Default)
+    {
+    }
+
+    public PPCalculator(PPCalculationCacheOptions cacheOptions)
+        : this(new PPCalculationEngine(new PPCalculationCache(cacheOptions)))
     {
     }
 
@@ -18,6 +23,9 @@ public class PPCalculator : IPerformanceCalculator
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
     }
+
+    /// <summary>Number of prepared beatmaps currently cached.</summary>
+    public int CachedBeatmapCount => _engine.Cache.Count;
 
     public Task<PPCalculationResult?> CalculatePpAsync(
         int beatmapId,
@@ -28,7 +36,9 @@ public class PPCalculator : IPerformanceCalculator
         osu.Game.Rulesets.Mods.Mod[]? scoreMods = null,
         Dictionary<osu.Game.Rulesets.Scoring.HitResult, int>? scoreStatistics = null,
         int rulesetId = 0,
-        CancellationToken? cancellationToken = null)
+        CancellationToken? cancellationToken = null,
+        Dictionary<osu.Game.Rulesets.Scoring.HitResult, int>? maximumStatistics = null,
+        long? legacyTotalScore = null)
     {
         return _engine.CalculateAsync(new PPCalculationRequest
         {
@@ -39,8 +49,12 @@ public class PPCalculator : IPerformanceCalculator
             ScoreMaxCombo = scoreMaxCombo,
             ScoreMods = scoreMods ?? [],
             ScoreStatistics = scoreStatistics,
+            MaximumStatistics = maximumStatistics,
+            LegacyTotalScore = legacyTotalScore,
             RulesetId = rulesetId,
             CancellationToken = cancellationToken
         });
     }
+
+    public void Dispose() => _engine.Dispose();
 }

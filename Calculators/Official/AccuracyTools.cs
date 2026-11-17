@@ -1,9 +1,6 @@
 ﻿using osu.Game.Beatmaps;
-using osu.Game.Rulesets.Catch.Objects;
-using osu.Game.Rulesets.Mania.Objects;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Mods;
-using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
 
 // ReSharper disable InconsistentNaming
@@ -19,6 +16,12 @@ public static class AccuracyTools
         // create an abstract class for every ruleset class 
         public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
             int? ok = null, int? mehs = null, int misses = 0, int? largeTickMisses = null,
+            int? sliderTailHits = null) =>
+            GenerateHitResults(PPCalculationBeatmapCounts.From(beatmap), mods, accuracy, ok, mehs, misses,
+                largeTickMisses, sliderTailHits);
+
+        internal static Dictionary<HitResult, int> GenerateHitResults(PPCalculationBeatmapCounts beatmap, Mod[] mods,
+            double accuracy, int? ok = null, int? mehs = null, int misses = 0, int? largeTickMisses = null,
             int? sliderTailHits = null)
         {
             //// Use lazer info only if score has sliderhead accuracy
@@ -29,12 +32,12 @@ public static class AccuracyTools
                 sliderTailHits);
         }
 
-        private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy,
+        private static Dictionary<HitResult, int> generateHitResults(PPCalculationBeatmapCounts beatmap, double accuracy,
             int countMiss, int? countMeh, int? countOk, int? countLargeTickMisses, int? countSliderTailHits)
         {
             int countGreat;
 
-            var totalResultCount = beatmap.HitObjects.Count;
+            var totalResultCount = beatmap.HitObjects;
 
             if (countMeh != null || countOk != null)
             {
@@ -124,7 +127,11 @@ public static class AccuracyTools
             return result;
         }
 
-        public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods)
+        public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods) =>
+            GetAccuracy(PPCalculationBeatmapCounts.From(beatmap), statistics, mods);
+
+        internal static double GetAccuracy(PPCalculationBeatmapCounts beatmap, Dictionary<HitResult, int> statistics,
+            Mod[] mods)
         {
             var countGreat = statistics[HitResult.Great];
             var countGood = statistics[HitResult.Ok];
@@ -138,7 +145,7 @@ public static class AccuracyTools
             {
                 if (statistics.TryGetValue(HitResult.SliderTailHit, out var countSliderTailHit))
                 {
-                    var countSliders = beatmap.HitObjects.Count(x => x is Slider);
+                    var countSliders = beatmap.Sliders;
 
                     total += 3 * countSliderTailHit;
                     max += 3 * countSliders;
@@ -146,8 +153,7 @@ public static class AccuracyTools
 
                 if (statistics.TryGetValue(HitResult.LargeTickMiss, out var countLargeTickMiss))
                 {
-                    var countLargeTicks = beatmap.HitObjects.Sum(obj =>
-                        obj.NestedHitObjects.Count(x => x is SliderTick or SliderRepeat));
+                    var countLargeTicks = beatmap.LargeTicks;
                     var countLargeTickHit = countLargeTicks - countLargeTickMiss;
 
                     total += 0.6 * countLargeTickHit;
@@ -162,15 +168,19 @@ public static class AccuracyTools
     public static class Taiko
     {
         public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
-            int misses = 0, int? goods = null)
+            int misses = 0, int? goods = null) =>
+            GenerateHitResults(PPCalculationBeatmapCounts.From(beatmap), mods, accuracy, misses, goods);
+
+        internal static Dictionary<HitResult, int> GenerateHitResults(PPCalculationBeatmapCounts beatmap, Mod[] mods,
+            double accuracy, int misses = 0, int? goods = null)
         {
             return generateHitResults(accuracy, beatmap, misses, goods);
         }
 
-        private static Dictionary<HitResult, int> generateHitResults(double accuracy, IBeatmap beatmap, int countMiss,
-            int? countGood)
+        private static Dictionary<HitResult, int> generateHitResults(double accuracy, PPCalculationBeatmapCounts beatmap,
+            int countMiss, int? countGood)
         {
-            var totalResultCount = beatmap.GetMaxCombo();
+            var totalResultCount = beatmap.MaxCombo;
 
             int countGreat;
 
@@ -196,7 +206,11 @@ public static class AccuracyTools
             };
         }
 
-        public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods)
+        public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods) =>
+            GetAccuracy(PPCalculationBeatmapCounts.From(beatmap), statistics, mods);
+
+        internal static double GetAccuracy(PPCalculationBeatmapCounts beatmap, Dictionary<HitResult, int> statistics,
+            Mod[] mods)
         {
             var countGreat = statistics[HitResult.Great];
             var countGood = statistics[HitResult.Ok];
@@ -210,22 +224,22 @@ public static class AccuracyTools
     public static class Catch
     {
         public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
-            int misses = 0, int? mehs = null, int? goods = null)
+            int misses = 0, int? mehs = null, int? goods = null) =>
+            GenerateHitResults(PPCalculationBeatmapCounts.From(beatmap), mods, accuracy, misses, mehs, goods);
+
+        internal static Dictionary<HitResult, int> GenerateHitResults(PPCalculationBeatmapCounts beatmap, Mod[] mods,
+            double accuracy, int misses = 0, int? mehs = null, int? goods = null)
         {
             return generateHitResults(beatmap, accuracy, misses, mehs, goods);
         }
 
-        private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, double accuracy,
+        private static Dictionary<HitResult, int> generateHitResults(PPCalculationBeatmapCounts beatmap, double accuracy,
             int countMiss, int? countMeh, int? countGood)
         {
-            var maxCombo = beatmap.GetMaxCombo();
-            var maxTinyDroplets = beatmap.HitObjects.OfType<JuiceStream>()
-                .Sum(s => s.NestedHitObjects.OfType<TinyDroplet>().Count());
-            var maxDroplets =
-                beatmap.HitObjects.OfType<JuiceStream>().Sum(s => s.NestedHitObjects.OfType<Droplet>().Count()) -
-                maxTinyDroplets;
-            var maxFruits = beatmap.HitObjects.Sum(h =>
-                h is Fruit ? 1 : (h as JuiceStream)?.NestedHitObjects.Count(n => n is Fruit) ?? 0);
+            var maxCombo = beatmap.MaxCombo;
+            var maxTinyDroplets = beatmap.TinyDroplets;
+            var maxDroplets = beatmap.Droplets;
+            var maxFruits = beatmap.Fruits;
 
             // Either given or max value minus misses
             var countDroplets = countGood ?? Math.Max(0, maxDroplets - countMiss);
@@ -251,7 +265,11 @@ public static class AccuracyTools
             };
         }
 
-        public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods)
+        public static double GetAccuracy(IBeatmap beatmap, Dictionary<HitResult, int> statistics, Mod[] mods) =>
+            GetAccuracy(PPCalculationBeatmapCounts.From(beatmap), statistics, mods);
+
+        internal static double GetAccuracy(PPCalculationBeatmapCounts beatmap, Dictionary<HitResult, int> statistics,
+            Mod[] mods)
         {
             double hits = statistics[HitResult.Great] + statistics[HitResult.LargeTickHit] +
                           statistics[HitResult.SmallTickHit];
@@ -264,18 +282,23 @@ public static class AccuracyTools
     public static class Mania
     {
         public static Dictionary<HitResult, int> GenerateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
-            int? greats = null, int? oks = null, int? goods = null, int? mehs = null, int misses = 0)
+            int? greats = null, int? oks = null, int? goods = null, int? mehs = null, int misses = 0) =>
+            GenerateHitResults(PPCalculationBeatmapCounts.From(beatmap), mods, accuracy, greats, oks, goods, mehs,
+                misses);
+
+        internal static Dictionary<HitResult, int> GenerateHitResults(PPCalculationBeatmapCounts beatmap, Mod[] mods,
+            double accuracy, int? greats = null, int? oks = null, int? goods = null, int? mehs = null, int misses = 0)
         {
             return generateHitResults(beatmap, mods, accuracy, misses, mehs, oks, goods, greats);
         }
 
-        private static Dictionary<HitResult, int> generateHitResults(IBeatmap beatmap, Mod[] mods, double accuracy,
-            int countMiss, int? countMeh, int? countOk, int? countGood, int? countGreat)
+        private static Dictionary<HitResult, int> generateHitResults(PPCalculationBeatmapCounts beatmap, Mod[] mods,
+            double accuracy, int countMiss, int? countMeh, int? countOk, int? countGood, int? countGreat)
         {
             // One judgement per normal note. Two judgements per hold note (head + tail).
-            var totalHits = beatmap.HitObjects.Count;
+            var totalHits = beatmap.HitObjects;
             if (!mods.Any(m => m is ModClassic))
-                totalHits += beatmap.HitObjects.Count(ho => ho is HoldNote);
+                totalHits += beatmap.HoldNotes;
 
             if (countMeh != null || countOk != null || countGood != null || countGreat != null)
             {

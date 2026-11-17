@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using osu.Game.Beatmaps;
@@ -8,11 +9,20 @@ namespace SosuBot.PerformanceCalculator;
 
 internal static partial class BeatmapFileParser
 {
-    public static WorkingBeatmap Parse(Stream beatmapFile, int? hitObjectsLimit = null)
+    /// <summary>Hex SHA-256 of the whole stream; the stream is rewound afterwards.</summary>
+    public static string ComputeHash(Stream beatmapFile)
     {
-        ArgumentNullException.ThrowIfNull(beatmapFile);
-        if (!beatmapFile.CanSeek)
-            throw new ArgumentException("The beatmap stream must be seekable.", nameof(beatmapFile));
+        EnsureSeekable(beatmapFile);
+
+        beatmapFile.Position = 0;
+        string hash = Convert.ToHexString(SHA256.HashData(beatmapFile));
+        beatmapFile.Position = 0;
+        return hash;
+    }
+
+    public static Beatmap Decode(Stream beatmapFile, int? hitObjectsLimit = null)
+    {
+        EnsureSeekable(beatmapFile);
 
         using var streamReader = new LineBufferedReader(beatmapFile, true);
         beatmapFile.Position = 0;
@@ -33,7 +43,14 @@ internal static partial class BeatmapFileParser
             beatmap.HitObjects = beatmap.HitObjects.Take(limit).ToList();
         }
 
-        return new LoadedBeatmap(beatmap);
+        return beatmap;
+    }
+
+    private static void EnsureSeekable(Stream beatmapFile)
+    {
+        ArgumentNullException.ThrowIfNull(beatmapFile);
+        if (!beatmapFile.CanSeek)
+            throw new ArgumentException("The beatmap stream must be seekable.", nameof(beatmapFile));
     }
 
     [GeneratedRegex(@"v(?<version>\d+)")]
